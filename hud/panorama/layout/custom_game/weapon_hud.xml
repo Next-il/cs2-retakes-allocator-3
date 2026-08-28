@@ -1,0 +1,635 @@
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/hud_shared.vcss_c" />
+		<include src="s2r://panorama/styles/custom_game/weapon_hud.vcss_c" />
+	</styles>
+
+	<!--
+		Weapon selection, split by team.
+
+		The shell - hud-screen, hud-root, hud-card, hud-head, hud-foot and the reveal animation - all
+		comes from hud_shared. Only the two columns and the tile grid are specific to this menu, so a
+		different panel reuses the same chrome by using the same class names.
+
+		SHAPE: two columns, 5 categories each, 12 options per category laid out 4 per line.
+		Groups 0-4 are T, 5-9 are CT - the plugin's Categories array is in that order and the
+		two have to agree. Panorama cannot wrap, so each line of 4 is its own panel and the plugin
+		collapses the ones a category does not fill.
+
+		DRIVEN BY:
+		  team_t / team_ct   {s:}     - team names
+		  grp{g}            hidden   - empty category collapses out
+		  grp{g}_r{k}       hidden   - unused line collapses
+		  grp{g}_label      {s:}     - category name
+		  w{g}_{c}          hidden   - unused tile collapses
+		  w{g}_{c}          selected - toggle state
+		  w{g}_{c}          icon-*   - weapon picture
+		  w{g}_{c}          {s:}     - weapon name
+		  wsel_save / wsel_close       - footer
+	-->
+	<Panel class="hud-screen" hittest="false">
+		<Panel id="HudMenuRoot" class="hud-root hud-card wsel-root">
+
+			<Panel class="hud-head">
+				<Label class="hud-title" text="{s:menu_title}" />
+				<Label class="hud-tag" text="{s:menu_subtitle}" />
+				<Button id="wsel_close" class="hud-exit">
+					<Label class="hud-x" text="&#x2715;" />
+				</Button>
+			</Panel>
+
+			<Panel class="wsel-body">
+			<Panel class="wsel-col wsel-col-t">
+				<Panel class="wsel-team">
+					<Panel class="wsel-team-logo" />
+					<Label class="wsel-team-name" text="{s:team_t}" />
+				</Panel>
+				<Panel id="grp0" class="wsel-group hidden">
+					<Label class="wsel-group-lbl" text="{s:grp0_label}" />
+						<Panel id="grp0_r0" class="wsel-tilerow hidden">
+							<Button id="w0_0" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w0_0}" />
+							</Button>
+							<Button id="w0_1" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w0_1}" />
+							</Button>
+							<Button id="w0_2" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w0_2}" />
+							</Button>
+							<Button id="w0_3" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w0_3}" />
+							</Button>
+						</Panel>
+						<Panel id="grp0_r1" class="wsel-tilerow hidden">
+							<Button id="w0_4" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w0_4}" />
+							</Button>
+							<Button id="w0_5" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w0_5}" />
+							</Button>
+							<Button id="w0_6" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w0_6}" />
+							</Button>
+							<Button id="w0_7" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w0_7}" />
+							</Button>
+						</Panel>
+						<Panel id="grp0_r2" class="wsel-tilerow hidden">
+							<Button id="w0_8" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w0_8}" />
+							</Button>
+							<Button id="w0_9" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w0_9}" />
+							</Button>
+							<Button id="w0_10" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w0_10}" />
+							</Button>
+							<Button id="w0_11" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w0_11}" />
+							</Button>
+						</Panel>
+				</Panel>
+				<Panel id="grp1" class="wsel-group hidden">
+					<Label class="wsel-group-lbl" text="{s:grp1_label}" />
+						<Panel id="grp1_r0" class="wsel-tilerow hidden">
+							<Button id="w1_0" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w1_0}" />
+							</Button>
+							<Button id="w1_1" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w1_1}" />
+							</Button>
+							<Button id="w1_2" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w1_2}" />
+							</Button>
+							<Button id="w1_3" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w1_3}" />
+							</Button>
+						</Panel>
+						<Panel id="grp1_r1" class="wsel-tilerow hidden">
+							<Button id="w1_4" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w1_4}" />
+							</Button>
+							<Button id="w1_5" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w1_5}" />
+							</Button>
+							<Button id="w1_6" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w1_6}" />
+							</Button>
+							<Button id="w1_7" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w1_7}" />
+							</Button>
+						</Panel>
+						<Panel id="grp1_r2" class="wsel-tilerow hidden">
+							<Button id="w1_8" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w1_8}" />
+							</Button>
+							<Button id="w1_9" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w1_9}" />
+							</Button>
+							<Button id="w1_10" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w1_10}" />
+							</Button>
+							<Button id="w1_11" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w1_11}" />
+							</Button>
+						</Panel>
+				</Panel>
+				<Panel id="grp2" class="wsel-group hidden">
+					<Label class="wsel-group-lbl" text="{s:grp2_label}" />
+						<Panel id="grp2_r0" class="wsel-tilerow hidden">
+							<Button id="w2_0" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w2_0}" />
+							</Button>
+							<Button id="w2_1" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w2_1}" />
+							</Button>
+							<Button id="w2_2" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w2_2}" />
+							</Button>
+							<Button id="w2_3" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w2_3}" />
+							</Button>
+						</Panel>
+						<Panel id="grp2_r1" class="wsel-tilerow hidden">
+							<Button id="w2_4" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w2_4}" />
+							</Button>
+							<Button id="w2_5" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w2_5}" />
+							</Button>
+							<Button id="w2_6" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w2_6}" />
+							</Button>
+							<Button id="w2_7" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w2_7}" />
+							</Button>
+						</Panel>
+						<Panel id="grp2_r2" class="wsel-tilerow hidden">
+							<Button id="w2_8" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w2_8}" />
+							</Button>
+							<Button id="w2_9" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w2_9}" />
+							</Button>
+							<Button id="w2_10" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w2_10}" />
+							</Button>
+							<Button id="w2_11" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w2_11}" />
+							</Button>
+						</Panel>
+				</Panel>
+				<Panel id="grp3" class="wsel-group hidden">
+					<Label class="wsel-group-lbl" text="{s:grp3_label}" />
+						<Panel id="grp3_r0" class="wsel-tilerow hidden">
+							<Button id="w3_0" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w3_0}" />
+							</Button>
+							<Button id="w3_1" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w3_1}" />
+							</Button>
+							<Button id="w3_2" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w3_2}" />
+							</Button>
+							<Button id="w3_3" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w3_3}" />
+							</Button>
+						</Panel>
+						<Panel id="grp3_r1" class="wsel-tilerow hidden">
+							<Button id="w3_4" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w3_4}" />
+							</Button>
+							<Button id="w3_5" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w3_5}" />
+							</Button>
+							<Button id="w3_6" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w3_6}" />
+							</Button>
+							<Button id="w3_7" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w3_7}" />
+							</Button>
+						</Panel>
+						<Panel id="grp3_r2" class="wsel-tilerow hidden">
+							<Button id="w3_8" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w3_8}" />
+							</Button>
+							<Button id="w3_9" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w3_9}" />
+							</Button>
+							<Button id="w3_10" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w3_10}" />
+							</Button>
+							<Button id="w3_11" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w3_11}" />
+							</Button>
+						</Panel>
+				</Panel>
+				<Panel id="grp4" class="wsel-group hidden">
+					<Label class="wsel-group-lbl" text="{s:grp4_label}" />
+						<Panel id="grp4_r0" class="wsel-tilerow hidden">
+							<Button id="w4_0" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w4_0}" />
+							</Button>
+							<Button id="w4_1" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w4_1}" />
+							</Button>
+							<Button id="w4_2" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w4_2}" />
+							</Button>
+							<Button id="w4_3" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w4_3}" />
+							</Button>
+						</Panel>
+						<Panel id="grp4_r1" class="wsel-tilerow hidden">
+							<Button id="w4_4" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w4_4}" />
+							</Button>
+							<Button id="w4_5" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w4_5}" />
+							</Button>
+							<Button id="w4_6" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w4_6}" />
+							</Button>
+							<Button id="w4_7" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w4_7}" />
+							</Button>
+						</Panel>
+						<Panel id="grp4_r2" class="wsel-tilerow hidden">
+							<Button id="w4_8" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w4_8}" />
+							</Button>
+							<Button id="w4_9" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w4_9}" />
+							</Button>
+							<Button id="w4_10" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w4_10}" />
+							</Button>
+							<Button id="w4_11" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w4_11}" />
+							</Button>
+						</Panel>
+				</Panel>
+			</Panel>
+			<Panel class="wsel-col wsel-col-ct">
+				<Panel class="wsel-team">
+					<Panel class="wsel-team-logo" />
+					<Label class="wsel-team-name" text="{s:team_ct}" />
+				</Panel>
+				<Panel id="grp5" class="wsel-group hidden">
+					<Label class="wsel-group-lbl" text="{s:grp5_label}" />
+						<Panel id="grp5_r0" class="wsel-tilerow hidden">
+							<Button id="w5_0" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w5_0}" />
+							</Button>
+							<Button id="w5_1" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w5_1}" />
+							</Button>
+							<Button id="w5_2" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w5_2}" />
+							</Button>
+							<Button id="w5_3" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w5_3}" />
+							</Button>
+						</Panel>
+						<Panel id="grp5_r1" class="wsel-tilerow hidden">
+							<Button id="w5_4" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w5_4}" />
+							</Button>
+							<Button id="w5_5" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w5_5}" />
+							</Button>
+							<Button id="w5_6" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w5_6}" />
+							</Button>
+							<Button id="w5_7" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w5_7}" />
+							</Button>
+						</Panel>
+						<Panel id="grp5_r2" class="wsel-tilerow hidden">
+							<Button id="w5_8" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w5_8}" />
+							</Button>
+							<Button id="w5_9" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w5_9}" />
+							</Button>
+							<Button id="w5_10" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w5_10}" />
+							</Button>
+							<Button id="w5_11" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w5_11}" />
+							</Button>
+						</Panel>
+				</Panel>
+				<Panel id="grp6" class="wsel-group hidden">
+					<Label class="wsel-group-lbl" text="{s:grp6_label}" />
+						<Panel id="grp6_r0" class="wsel-tilerow hidden">
+							<Button id="w6_0" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w6_0}" />
+							</Button>
+							<Button id="w6_1" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w6_1}" />
+							</Button>
+							<Button id="w6_2" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w6_2}" />
+							</Button>
+							<Button id="w6_3" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w6_3}" />
+							</Button>
+						</Panel>
+						<Panel id="grp6_r1" class="wsel-tilerow hidden">
+							<Button id="w6_4" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w6_4}" />
+							</Button>
+							<Button id="w6_5" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w6_5}" />
+							</Button>
+							<Button id="w6_6" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w6_6}" />
+							</Button>
+							<Button id="w6_7" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w6_7}" />
+							</Button>
+						</Panel>
+						<Panel id="grp6_r2" class="wsel-tilerow hidden">
+							<Button id="w6_8" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w6_8}" />
+							</Button>
+							<Button id="w6_9" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w6_9}" />
+							</Button>
+							<Button id="w6_10" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w6_10}" />
+							</Button>
+							<Button id="w6_11" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w6_11}" />
+							</Button>
+						</Panel>
+				</Panel>
+				<Panel id="grp7" class="wsel-group hidden">
+					<Label class="wsel-group-lbl" text="{s:grp7_label}" />
+						<Panel id="grp7_r0" class="wsel-tilerow hidden">
+							<Button id="w7_0" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w7_0}" />
+							</Button>
+							<Button id="w7_1" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w7_1}" />
+							</Button>
+							<Button id="w7_2" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w7_2}" />
+							</Button>
+							<Button id="w7_3" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w7_3}" />
+							</Button>
+						</Panel>
+						<Panel id="grp7_r1" class="wsel-tilerow hidden">
+							<Button id="w7_4" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w7_4}" />
+							</Button>
+							<Button id="w7_5" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w7_5}" />
+							</Button>
+							<Button id="w7_6" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w7_6}" />
+							</Button>
+							<Button id="w7_7" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w7_7}" />
+							</Button>
+						</Panel>
+						<Panel id="grp7_r2" class="wsel-tilerow hidden">
+							<Button id="w7_8" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w7_8}" />
+							</Button>
+							<Button id="w7_9" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w7_9}" />
+							</Button>
+							<Button id="w7_10" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w7_10}" />
+							</Button>
+							<Button id="w7_11" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w7_11}" />
+							</Button>
+						</Panel>
+				</Panel>
+				<Panel id="grp8" class="wsel-group hidden">
+					<Label class="wsel-group-lbl" text="{s:grp8_label}" />
+						<Panel id="grp8_r0" class="wsel-tilerow hidden">
+							<Button id="w8_0" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w8_0}" />
+							</Button>
+							<Button id="w8_1" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w8_1}" />
+							</Button>
+							<Button id="w8_2" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w8_2}" />
+							</Button>
+							<Button id="w8_3" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w8_3}" />
+							</Button>
+						</Panel>
+						<Panel id="grp8_r1" class="wsel-tilerow hidden">
+							<Button id="w8_4" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w8_4}" />
+							</Button>
+							<Button id="w8_5" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w8_5}" />
+							</Button>
+							<Button id="w8_6" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w8_6}" />
+							</Button>
+							<Button id="w8_7" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w8_7}" />
+							</Button>
+						</Panel>
+						<Panel id="grp8_r2" class="wsel-tilerow hidden">
+							<Button id="w8_8" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w8_8}" />
+							</Button>
+							<Button id="w8_9" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w8_9}" />
+							</Button>
+							<Button id="w8_10" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w8_10}" />
+							</Button>
+							<Button id="w8_11" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w8_11}" />
+							</Button>
+						</Panel>
+				</Panel>
+				<Panel id="grp9" class="wsel-group hidden">
+					<Label class="wsel-group-lbl" text="{s:grp9_label}" />
+						<Panel id="grp9_r0" class="wsel-tilerow hidden">
+							<Button id="w9_0" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w9_0}" />
+							</Button>
+							<Button id="w9_1" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w9_1}" />
+							</Button>
+							<Button id="w9_2" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w9_2}" />
+							</Button>
+							<Button id="w9_3" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w9_3}" />
+							</Button>
+						</Panel>
+						<Panel id="grp9_r1" class="wsel-tilerow hidden">
+							<Button id="w9_4" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w9_4}" />
+							</Button>
+							<Button id="w9_5" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w9_5}" />
+							</Button>
+							<Button id="w9_6" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w9_6}" />
+							</Button>
+							<Button id="w9_7" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w9_7}" />
+							</Button>
+						</Panel>
+						<Panel id="grp9_r2" class="wsel-tilerow hidden">
+							<Button id="w9_8" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w9_8}" />
+							</Button>
+							<Button id="w9_9" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w9_9}" />
+							</Button>
+							<Button id="w9_10" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w9_10}" />
+							</Button>
+							<Button id="w9_11" class="wsel-tile hidden">
+								<Panel class="wsel-tile-img" />
+								<Label class="wsel-tile-lbl" text="{s:w9_11}" />
+							</Button>
+						</Panel>
+				</Panel>
+			</Panel>
+			</Panel>
+
+			<Panel class="hud-foot">
+				<Label class="hud-hint" text="{s:menu_footer}" />
+				<Button id="wsel_save" class="hud-btn">
+					<Label class="hud-btn-lbl" text="SAVE" />
+				</Button>
+			</Panel>
+
+		</Panel>
+	</Panel>
+</root>

@@ -13,11 +13,29 @@ namespace RetakesAllocatorCore.Db;
 
 public class Queries
 {
-    private static readonly SemaphoreSlim UpsertSemaphore = new(1, 1);
+    /// <summary>
+    /// Serialises every operation against the shared context.
+    ///
+    /// <para><c>Db.GetInstance()</c> is a singleton and an EF <c>DbContext</c> is not thread-safe.
+    /// Writes were already guarded; reads were not, so any read overlapping another operation throws
+    /// "A second operation was started on this context instance". That was latent for as long as
+    /// every caller happened to be on the game thread, and stops being latent the moment one is not.
+    /// </para>
+    /// </summary>
+    private static readonly SemaphoreSlim ContextSemaphore = new(1, 1);
 
     public static async Task<UserSetting?> GetUserSettings(ulong userId)
     {
-        return await Db.GetInstance().UserSettings.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
+        await ContextSemaphore.WaitAsync();
+
+        try
+        {
+            return await Db.GetInstance().UserSettings.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
+        }
+        finally
+        {
+            ContextSemaphore.Release();
+        }
     }
 
     private static async Task<UserSetting?> UpsertUserSettings(ulong userId, Action<UserSetting> mutation)
@@ -28,7 +46,7 @@ public class Queries
             return null;
         }
 
-        await UpsertSemaphore.WaitAsync();
+        await ContextSemaphore.WaitAsync();
         try
         {
             Log.Debug($"Upserting settings for {userId}");
@@ -54,7 +72,7 @@ public class Queries
         }
         finally
         {
-            UpsertSemaphore.Release();
+            ContextSemaphore.Release();
         }
     }
 
@@ -119,11 +137,26 @@ public class Queries
     }
     public static IDictionary<ulong, UserSetting> GetUsersSettings(ICollection<ulong> userIds)
     {
-        var userSettingsList = Db.GetInstance()
-            .UserSettings
-            .AsNoTracking()
-            .Where(u => userIds.Contains(u.UserId))
-            .ToList();
+        // Synchronous, and called from the game thread at round start. It shares the singleton
+        // context with everything else here, including the Task.Run above, so it needs the same
+        // gate. Blocking briefly on an indexed point read is a far better outcome than the
+        // "second operation started on this context" exception it races into otherwise.
+        ContextSemaphore.Wait();
+
+        List<UserSetting> userSettingsList;
+
+        try
+        {
+            userSettingsList = Db.GetInstance()
+                .UserSettings
+                .AsNoTracking()
+                .Where(u => userIds.Contains(u.UserId))
+                .ToList();
+        }
+        finally
+        {
+            ContextSemaphore.Release();
+        }
         if (userSettingsList.Count == 0)
         {
             return new Dictionary<ulong, UserSetting>();

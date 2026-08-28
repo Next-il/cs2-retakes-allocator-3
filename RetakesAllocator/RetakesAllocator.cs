@@ -1,5 +1,7 @@
 using System.Text;
 using CounterStrikeSharp.API;
+using Microsoft.Extensions.Logging;
+using PanoramaManager;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
@@ -13,12 +15,12 @@ using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using CounterStrikeSharp.API.Modules.Events;
 using RetakesAllocatorCore.Managers;
+using RetakesAllocator.AdvancedMenus;
 using RetakesAllocator.Menus;
 using RetakesAllocatorCore;
 using RetakesAllocatorCore.Config;
 using RetakesAllocatorCore.Db;
 using SQLitePCL;
-using RetakesAllocator.AdvancedMenus;
 using static RetakesAllocatorCore.PluginInfo;
 using RetakesPluginShared;
 using RetakesPluginShared.Events;
@@ -45,6 +47,9 @@ public class RetakesAllocator : BasePlugin
     private bool _announceBombsite;
     private bool _bombsiteAnnounceOneTime;
     private bool _weaponDataSignatureFailed;
+    private WeaponHudMenu? _weaponHud;
+    private bool            _warnedBuymenuHasNoPlayer;
+
     private static readonly string[] BuyMenuCommands =
     {
         "buy",
@@ -65,6 +70,22 @@ public class RetakesAllocator : BasePlugin
         Log.Debug($"Loaded. Hot reload: {hotReload}");
         ResetState();
         Batteries.Init();
+
+        // Panorama weapon grid. Replaces the chat-menu !guns screen; the allocator's config,
+        // validation and database are untouched - this only presses the same buttons. Leaving
+        // EnableHUDMenu off skips all of it and the SharpModMenu screen behaves exactly as before.
+        if (Configs.GetConfigData().EnableHUDMenu)
+        {
+            Panorama.Init(this);
+            _weaponHud = new WeaponHudMenu(Logger);
+
+            AdvancedGunMenu.HudMenuOverride = _weaponHud;
+
+            if (!Panorama.CanReceiveClicks)
+            {
+                Logger.LogWarning("[WeaponHud] no click channel - the grid will render but not respond.");
+            }
+        }
 
         foreach (var command in BuyMenuCommands)
         {
@@ -159,6 +180,13 @@ public class RetakesAllocator : BasePlugin
 
     public override void Unload(bool hotReload)
     {
+        if (_weaponHud is not null)
+        {
+            AdvancedGunMenu.HudMenuOverride = null;
+            _weaponHud.Dispose();
+            Panorama.Shutdown();
+        }
+
         Log.Debug("Unloaded");
         _advancedGunMenu.Cleanup();
         ResetState(loadConfig: false);
@@ -264,6 +292,69 @@ public class RetakesAllocator : BasePlugin
         // Preferences now only affect the next allocation; no weapon swap during the current round
     }
 
+    /// <summary>
+    /// Opens the weapon grid when the player opens the buy menu.
+    ///
+    /// <para>CS2 fires this event when the buy menu opens, which is what makes intercepting the B key
+    /// possible at all. The earlier attempt hooked the "buymenu" console command and never fired -
+    /// pressing B does not route through the command system, so there was nothing to listen to. There
+    /// is also no PlayerButtons flag for it (the enum covers movement and weapon inputs), so polling
+    /// ticks would not have worked either.</para>
+    /// </summary>
+    [GameEventHandler(HookMode.Pre)]
+    public HookResult OnBuymenuOpen(EventBuymenuOpen @event, GameEventInfo info)
+    {
+        if (_weaponHud is null)
+        {
+            return HookResult.Continue;
+        }
+
+        // The generated event class exposes only EventName and Handle - no player. Reflected on the
+        // type to confirm that, so this reads the raw field directly in case the underlying event
+        // carries a userid the generated wrapper does not surface. If it does not, the event fires
+        // for nobody in particular and cannot route, which the log will say once.
+        CCSPlayerController? player = null;
+
+        try
+        {
+            player = @event.Get<CCSPlayerController?>("userid");
+        }
+        catch
+        {
+            // No such field on this event.
+        }
+
+        if (player is not { IsValid: true })
+        {
+            if (!_warnedBuymenuHasNoPlayer)
+            {
+                _warnedBuymenuHasNoPlayer = true;
+
+                Log.Info("[WeaponHud] buymenu_open fired but carries no player - cannot open the grid "
+                         + "from it. Use /guns or css_guns.");
+            }
+
+            return HookResult.Continue;
+        }
+
+        _weaponHud.Open(player);
+
+        // Suppress the event so the buy menu does not come up behind the grid. The buy menu itself is
+        // client-side, so on a server that still allows buying this may not stop it appearing - pair
+        // it with EnableBuyMenu off, which retakes servers run anyway.
+        return HookResult.Handled;
+    }
+
+    [ConsoleCommand("css_guns", "Open the weapon selection grid.")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnGunsCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player is { IsValid: true } && _weaponHud is not null)
+        {
+            _weaponHud.Open(player);
+        }
+    }
+
     [ConsoleCommand("css_awp", "Join or leave the AWP queue.")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnAwpCommand(CCSPlayerController? player, CommandInfo commandInfo)
@@ -271,6 +362,12 @@ public class RetakesAllocator : BasePlugin
         if (!Helpers.PlayerIsValid(player))
         {
             return;
+        }
+
+		if (_weaponHud is not null)
+        {
+            _weaponHud.Open(player);
+			return;
         }
 
         var playerId = Helpers.GetSteamId(player);
@@ -533,6 +630,29 @@ public class RetakesAllocator : BasePlugin
 
     private HookResult OnBuyMenuCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
+        // Pressing B reaches the server as the "buymenu" command, which is what makes this possible
+        // at all - the buy menu itself is client-side Panorama and nothing else about it crosses the
+        // wire. Swallow it and put the weapon grid up instead.
+        // Info, not Debug: Log.Write drops anything below the configured LogLevel and the default is
+        // Information, so a Debug line here is invisible on a stock config - which is why the first
+        // attempt at this produced no output at all rather than telling us the hook never fired.
+        var raw = commandInfo.GetCommandString ?? string.Empty;
+
+        Log.Info($"Buy menu command: arg0='{commandInfo.GetArg(0)}' arg1='{commandInfo.GetArg(1)}' full='{raw}'");
+
+        // Match on the whole command string as well as arg0, since which of the two carries the verb
+        // is exactly what we could not see before.
+        var wantsMenu = commandInfo.GetArg(0) is "buymenu" or "buy_menu"
+                        || raw.TrimStart().StartsWith("buymenu", StringComparison.OrdinalIgnoreCase)
+                        || raw.TrimStart().StartsWith("buy_menu", StringComparison.OrdinalIgnoreCase);
+
+        if (player is { IsValid: true } && _weaponHud is not null && wantsMenu)
+        {
+            _weaponHud.Open(player);
+
+            return HookResult.Handled;
+        }
+
         return Configs.GetConfigData().IsBuyMenuEnabled()
             ? HookResult.Continue
             : HookResult.Handled;

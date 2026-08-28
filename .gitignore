@@ -9,3 +9,22 @@ riderModule.iml
 .vs-code/
 data.db
 *.sln
+
+# macOS
+.DS_Store
+
+# Build output. compile.ps1 regenerates this, and it carries ~20MB of binaries including
+# SharpModMenu, which is not ours to redistribute through this repo.
+compiled/
+
+# Panorama sources live in hud/panorama; the compiled forms are produced by Workshop Tools
+*.vxml_c
+*.vcss_c
+*.preview.html
+previews/
+
+# Local scratch
+*.zip
+
+# Dev-time copy of https://github.com/Next-il/PanoramaHUD-Skills - lives in its own repo
+skills/

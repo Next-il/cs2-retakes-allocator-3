@@ -1,0 +1,211 @@
+/*
+    weapon_hud - what is specific to the weapon grid.
+
+    The shell lives in hud_shared: hud-root, hud-card, hud-head, hud-foot, the reveal animation, the
+    accent palette. Include that first. Anything below is here because it is about weapons or about
+    two teams, and would be dead weight in a layout that is neither.
+
+    THINGS THAT ARE NOT WEB CSS AND COST A DEPLOY EACH TO LEARN:
+      * There is no wrapping. Five per line means five panels per line, structurally.
+      * background-size takes explicit percentages, and the panel has to match the artwork - see the
+        icon block at the bottom.
+      * A child at width:100% inside a parent with no width renders as nothing.
+*/
+
+/* Wide enough that the grid divides it exactly - see the arithmetic on .wsel-col. */
+.wsel-root {
+    width: 758px;
+}
+
+/* Two team columns ---------------------------------------------------------- */
+
+.wsel-body {
+    flow-children: right;
+    width: 100%;
+    padding: 14px;
+    max-height: 620px;
+    overflow: squish scroll;
+}
+
+/*
+    Explicit width, not fill-parent-flow. The tile grid is a fixed size, so the column has to be a
+    size the grid divides exactly - otherwise the remainder piles up on the right of every row and
+    the gutters stop matching. 359 - 24 padding = 335 = 4x80 + 3x5.
+*/
+.wsel-col {
+    width: 359px;
+    flow-children: down;
+    padding: 12px;
+}
+
+/*
+    A tint per side rather than a divider. The eye separates two coloured regions instantly, where a
+    line only says "there is a line here" and you still have to read the labels. Very low alpha:
+    this is a background, not a highlight.
+*/
+.wsel-col-t  { background-color: #f0a53109; margin-right: 6px; }
+.wsel-col-ct { background-color: #56a0dd09; margin-left: 6px; }
+
+.wsel-team {
+    flow-children: right;
+    width: 100%;
+    margin-bottom: 12px;
+    padding-bottom: 9px;
+    border-bottom: 1px solid #ffffff14;
+}
+
+/* Static artwork - a column's team never changes, so no class toggle is involved. */
+.wsel-team-logo {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+    vertical-align: center;
+}
+
+.wsel-col-t .wsel-team-logo {
+    background-image: url("s2r://panorama/images/icons/ui/t_logo_1c.vsvg");
+    wash-color: #f0a531;
+}
+
+.wsel-col-ct .wsel-team-logo {
+    background-image: url("s2r://panorama/images/icons/ui/ct_logo_1c.vsvg");
+    wash-color: #56a0dd;
+}
+
+.wsel-team-name {
+    width: fill-parent-flow(1.0);
+    font-family: Stratum2 Medium Condensed;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    vertical-align: center;
+}
+
+.wsel-col-t  .wsel-team-name { color: #f0a531; }
+.wsel-col-ct .wsel-team-name { color: #56a0dd; }
+
+/* Categories ---------------------------------------------------------------- */
+
+.wsel-group {
+    flow-children: down;
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.wsel-group-lbl {
+    width: 100%;
+    font-family: Stratum2 Mono;
+    font-size: 10px;
+    color: #6b737c;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 6px;
+}
+
+.wsel-tilerow {
+    flow-children: right;
+    width: 100%;
+}
+
+/* Tiles --------------------------------------------------------------------- */
+
+.wsel-tile {
+    width: 80px;
+    height: 42px;
+    flow-children: down;
+    padding: 4px;
+    margin: 0px 5px 5px 0px;
+    border: 1px solid #ffffff14;
+    background-color: #ffffff0a;
+    overflow: clip clip;
+    transition-property: background-color, border-color;
+    transition-duration: 0.1s;
+    transition-timing-function: ease-in-out;
+}
+
+/* The trailing gutter would otherwise sit inside the row and shift everything left. */
+.wsel-tile:last-child { margin-right: 0px; }
+
+.wsel-tile:hover {
+    background-color: #ffffff1a;
+    border-color: #ffffff33;
+}
+
+.wsel-col-t  .wsel-tile.selected { border-color: #f0a531; background-color: #f0a53133; }
+.wsel-col-ct .wsel-tile.selected { border-color: #56a0dd; background-color: #56a0dd33; }
+
+.wsel-tile.disabled { opacity: 0.25; }
+
+.wsel-tile-img {
+    height: 22px;
+    horizontal-align: center;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+    wash-color: #aeb5bd;
+}
+
+.wsel-tile.selected .wsel-tile-img { wash-color: #ffffff; }
+
+.wsel-tile-lbl {
+    width: 100%;
+    font-family: Stratum2 Mono;
+    font-size: 9px;
+    color: #aeb5bd;
+    text-transform: uppercase;
+    text-align: center;
+    text-overflow: ellipsis;
+    margin-top: 3px;
+}
+
+.wsel-tile.selected .wsel-tile-lbl { color: #ffffff; font-weight: bold; }
+
+/* Weapon icons ---------------------------------------------------------------
+    One rule per weapon, each sized to its own artwork.
+
+    NOTE THE DESCENDANT SELECTOR. The class is toggled on the tile BUTTON, because that is the id the
+    plugin knows. Aiming background-image at the button paints it across the whole tile, straight
+    through the label, and leaves the inner panel empty - so every sizing rule on that panel does
+    nothing at all.
+
+    Widths come from each icon's viewBox: all are 32 tall but run from 1.005:1 (P2000) to 3.422:1
+    (AWP), so one shared box either stretches the short ones or crops the long ones. With the panel
+    matching the artwork, background-size: 100% 100% is exact by construction.
+*/
+.icon-ak47 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/ak47.vsvg"); width: 61px; height: 22px; }
+.icon-aug .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/aug.vsvg"); width: 52px; height: 22px; }
+.icon-awp .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/awp.vsvg"); width: 72px; height: 21px; }
+.icon-bizon .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/bizon.vsvg"); width: 62px; height: 22px; }
+.icon-cz75a .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/cz75a.vsvg"); width: 33px; height: 22px; }
+.icon-deagle .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/deagle.vsvg"); width: 35px; height: 22px; }
+.icon-elite .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/elite.vsvg"); width: 47px; height: 22px; }
+.icon-famas .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/famas.vsvg"); width: 54px; height: 22px; }
+.icon-fiveseven .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/fiveseven.vsvg"); width: 27px; height: 22px; }
+.icon-g3sg1 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/g3sg1.vsvg"); width: 64px; height: 22px; }
+.icon-galilar .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/galilar.vsvg"); width: 62px; height: 22px; }
+.icon-glock .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/glock.vsvg"); width: 31px; height: 22px; }
+.icon-hkp2000 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/hkp2000.vsvg"); width: 22px; height: 22px; }
+.icon-m249 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/m249.vsvg"); width: 66px; height: 22px; }
+.icon-m4a1 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/m4a1.vsvg"); width: 54px; height: 22px; }
+.icon-m4a1_silencer .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/m4a1_silencer.vsvg"); width: 66px; height: 22px; }
+.icon-mac10 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/mac10.vsvg"); width: 31px; height: 22px; }
+.icon-mag7 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/mag7.vsvg"); width: 46px; height: 22px; }
+.icon-mp5sd .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/mp5sd.vsvg"); width: 52px; height: 22px; }
+.icon-mp7 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/mp7.vsvg"); width: 34px; height: 22px; }
+.icon-mp9 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/mp9.vsvg"); width: 51px; height: 22px; }
+.icon-negev .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/negev.vsvg"); width: 56px; height: 22px; }
+.icon-nova .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/nova.vsvg"); width: 69px; height: 22px; }
+.icon-p250 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/p250.vsvg"); width: 26px; height: 22px; }
+.icon-p90 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/p90.vsvg"); width: 47px; height: 22px; }
+.icon-revolver .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/revolver.vsvg"); width: 36px; height: 22px; }
+.icon-sawedoff .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/sawedoff.vsvg"); width: 58px; height: 22px; }
+.icon-scar20 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/scar20.vsvg"); width: 67px; height: 22px; }
+.icon-sg556 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/sg556.vsvg"); width: 62px; height: 22px; }
+.icon-ssg08 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/ssg08.vsvg"); width: 69px; height: 22px; }
+.icon-tec9 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/tec9.vsvg"); width: 36px; height: 22px; }
+.icon-ump45 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/ump45.vsvg"); width: 57px; height: 22px; }
+.icon-usp_silencer .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/usp_silencer.vsvg"); width: 48px; height: 22px; }
+.icon-xm1014 .wsel-tile-img { background-image: url("s2r://panorama/images/icons/equipment/xm1014.vsvg"); width: 67px; height: 22px; }

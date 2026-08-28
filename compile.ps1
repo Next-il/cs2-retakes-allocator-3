@@ -6,7 +6,7 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $root
 
 $solution = Join-Path $root 'cs2-retakes-allocator.sln'
-$buildOutput = Join-Path $root 'RetakesAllocator/bin/Release/net8.0'
+$buildOutput = Join-Path $root 'RetakesAllocator/bin/Release/net10.0'
 $compiledRoot = Join-Path $root 'compiled'
 $pluginName = 'RetakesAllocator'
 $pluginTarget = Join-Path $compiledRoot "counterstrikesharp/plugins/$pluginName"

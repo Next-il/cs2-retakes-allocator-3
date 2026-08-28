@@ -42,11 +42,25 @@ public class AdvancedGunMenu
         var commands = Configs.GetConfigData().InGameGunMenuCenterCommands.Split(',');
         if (commands.Any(cmd => cmd.Equals(message, StringComparison.OrdinalIgnoreCase)))
         {
-            _ = OpenMenuForPlayerAsync(player!);
+            // The Panorama grid takes over when the plugin has one. Clearing the override puts the
+            // SharpModMenu screen back with no other change, which is the escape hatch if the HUD
+            // misbehaves on a given build.
+            if (HudMenuOverride is not null)
+            {
+                HudMenuOverride.Open(player!);
+            }
+            else
+            {
+                _ = OpenMenuForPlayerAsync(player!);
+            }
         }
 
         return HookResult.Continue;
     }
+
+    /// <summary>Set to route the configured gun-menu commands at the Panorama grid instead of the
+    /// chat menu. Null restores the original behaviour.</summary>
+    public static WeaponHudMenu? HudMenuOverride { get; set; }
 
     public void OnTick()
     {

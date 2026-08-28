@@ -409,6 +409,16 @@ public record ConfigData
     public string ChatMessagePluginName { get; set; } = "Retakes";
     public string? ChatMessagePluginPrefix { get; set; }
 
+    /// <summary>
+    /// Route the gun-menu commands at the Panorama HUD grid instead of the chat menu.
+    ///
+    /// <para>Turning it off restores the SharpModMenu screen exactly as before - the HUD is an
+    /// alternative front end to the same preferences, not a different feature. Worth having as a
+    /// switch because the grid depends on a client-side layout that a CS2 update can break, and the
+    /// chat menu never does.</para>
+    /// </summary>
+    public bool EnableHUDMenu { get; set; } = true;
+
     public string InGameGunMenuCenterCommands { get; set; } =
         "guns,!guns,/guns,gun,!gun,!gun";
     public DatabaseProvider DatabaseProvider { get; set; } = DatabaseProvider.Sqlite;
@@ -623,6 +633,7 @@ public record ConfigFileLayout
             LogLevel = data.LogLevel,
             ChatMessagePluginName = data.ChatMessagePluginName,
             ChatMessagePluginPrefix = data.ChatMessagePluginPrefix,
+            EnableHUDMenu = data.EnableHUDMenu,
             InGameGunMenuCenterCommands = data.InGameGunMenuCenterCommands,
             AutoUpdateSignatures = data.AutoUpdateSignatures,
         },
@@ -771,6 +782,10 @@ public record ConfigFileLayout
             if (Config.ChatMessagePluginPrefix is not null)
             {
                 data.ChatMessagePluginPrefix = Config.ChatMessagePluginPrefix;
+            }
+            if (Config.EnableHUDMenu is bool enableHudMenu)
+            {
+                data.EnableHUDMenu = enableHudMenu;
             }
             if (Config.InGameGunMenuCenterCommands is not null)
             {
@@ -1022,6 +1037,10 @@ public record ConfigCategory
     public LogLevel? LogLevel { get; set; }
     public string? ChatMessagePluginName { get; set; }
     public string? ChatMessagePluginPrefix { get; set; }
+    /// <summary>Nullable so an omitted key means "leave the default alone", like every other
+    /// option in this overlay.</summary>
+    public bool? EnableHUDMenu { get; set; }
+
     public string? InGameGunMenuCenterCommands { get; set; }
     public bool? AutoUpdateSignatures { get; set; }
 }
