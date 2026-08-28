@@ -7,8 +7,7 @@ panorama/layout/custom_game/weapon_hud.xml    the grid
 panorama/styles/custom_game/weapon_hud.css    its look
 panorama/styles/custom_game/hud_shared.css    the card, header, footer, reveal - shared chrome
 previews/weapon_hud.preview.html              open in a browser
-lib/PanoramaManager.dll                        the library. RetakesAllocator.csproj references this file
-lib/panoramamanager.json                              engine signatures; goes in counterstrikesharp/gamedata/
+lib/panoramamanager.json                      engine signatures; goes in counterstrikesharp/gamedata/
 ```
 
 Tooling and the Panorama reference are **not** duplicated here - they live in
@@ -103,12 +102,19 @@ Addon-supplied layouts are still refused by the client, so today this needs a lo
 
 ## Updating the library
 
-`RetakesAllocator.csproj` references `hud/lib/PanoramaManager.dll` as a **file**, not as a project -
-this folder ships as a standalone fork and a clone will not have the PanoramaManager source tree beside it.
-When the library changes, drop the new DLL in and rebuild. Nothing else moves.
+The library comes from nuget.org:
 
-`lib/panoramamanager.json` goes in `counterstrikesharp/gamedata/`. It carries the engine signatures, so a CS2
-update that shifts them is a text edit on the server rather than a plugin rebuild.
+```xml
+<PackageReference Include="PanoramaManager" Version="0.1.0" />
+```
+
+Bump the version in `RetakesAllocator/RetakesAllocator.csproj` and rebuild. This folder ships as a
+standalone fork, so a package is the only reference that survives a clone - there is no
+PanoramaManager source tree beside it.
+
+`lib/panoramamanager.json` goes in `counterstrikesharp/gamedata/`. It carries the engine signatures,
+so a CS2 update that shifts them is a text edit on the server rather than a plugin rebuild. The
+NuGet package ships the same file under `contentFiles/any/any/gamedata/`.
 
 ## Turning it off
 

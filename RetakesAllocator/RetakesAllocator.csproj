@@ -12,6 +12,12 @@
         <PackageReference Include="CounterStrikeSharp.API" Version="1.0.373" />
         <PackageReference Include="CSSUniversalMenuAPI" Version="0.4.0" ExcludeAssets="runtime" />
         <PackageReference Include="RetakesPluginShared" Version="2.0.0" />
+
+        <!-- The HUD menu library. Comes from nuget.org, so a clone of this fork restores it
+             like any other dependency - no committed DLL to keep in sync. It copies next to
+             the plugin on build, which is what CounterStrikeSharp needs: each plugin loads
+             through a context that probes its own folder. -->
+        <PackageReference Include="PanoramaManager" Version="0.1.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -37,20 +43,5 @@
     <ItemGroup>
         <None Update="lang\**\*.*" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
-
-  <ItemGroup>
-    <!--
-        The HUD menu library, referenced as a DLL rather than as a project.
-
-        This folder ships as a standalone fork — anyone who clones it will not have the PanoramaManager source
-        tree next to it, and a ProjectReference to a sibling repo simply fails to restore. The DLL
-        lives in hud/lib and is committed alongside the layouts it drives, so a clone builds with
-        nothing else present. When the library changes, drop the new DLL in and rebuild.
-    -->
-    <Reference Include="PanoramaManager">
-      <HintPath>..\hud\lib\PanoramaManager.dll</HintPath>
-      <Private>true</Private>
-    </Reference>
-  </ItemGroup>
 
 </Project>

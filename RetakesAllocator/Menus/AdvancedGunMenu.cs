@@ -45,9 +45,9 @@ public class AdvancedGunMenu
             // The Panorama grid takes over when the plugin has one. Clearing the override puts the
             // SharpModMenu screen back with no other change, which is the escape hatch if the HUD
             // misbehaves on a given build.
-            if (HudMenuOverride is not null)
+            if (PanoramaMenuOverride is not null)
             {
-                HudMenuOverride.Open(player!);
+                PanoramaMenuOverride.Open(player!);
             }
             else
             {
@@ -60,7 +60,7 @@ public class AdvancedGunMenu
 
     /// <summary>Set to route the configured gun-menu commands at the Panorama grid instead of the
     /// chat menu. Null restores the original behaviour.</summary>
-    public static WeaponHudMenu? HudMenuOverride { get; set; }
+    public static WeaponHudMenu? PanoramaMenuOverride { get; set; }
 
     public void OnTick()
     {

@@ -93,7 +93,7 @@ public sealed class WeaponHudMenu
 
         _menu = Panorama.Spawn(Layout, new LayoutContract
         {
-            RootPanelId   = "HudMenuRoot",
+            RootPanelId   = "PanoramaRoot",
             RevealClass   = "show",       // the layout animates in rather than collapsing
             CloseButtonId = "wsel_close",
             RowCount      = 1,            // no row pool here; the grid is driven directly
@@ -401,7 +401,7 @@ public sealed class WeaponHudMenu
 
                 if (!string.IsNullOrEmpty(message))
                 {
-                    _logger.LogInformation(
+                    _logger.LogDebug(
                         "[WeaponHud] {SteamId} {Category}: {Message}", steamId, Categories[group].Label, message);
                 }
             }

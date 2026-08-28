@@ -79,7 +79,7 @@ public class RetakesAllocator : BasePlugin
             Panorama.Init(this);
             _weaponHud = new WeaponHudMenu(Logger);
 
-            AdvancedGunMenu.HudMenuOverride = _weaponHud;
+            AdvancedGunMenu.PanoramaMenuOverride = _weaponHud;
 
             if (!Panorama.CanReceiveClicks)
             {
@@ -182,7 +182,7 @@ public class RetakesAllocator : BasePlugin
     {
         if (_weaponHud is not null)
         {
-            AdvancedGunMenu.HudMenuOverride = null;
+            AdvancedGunMenu.PanoramaMenuOverride = null;
             _weaponHud.Dispose();
             Panorama.Shutdown();
         }
