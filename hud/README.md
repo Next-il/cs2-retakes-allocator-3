@@ -105,7 +105,7 @@ Addon-supplied layouts are still refused by the client, so today this needs a lo
 The library comes from nuget.org:
 
 ```xml
-<PackageReference Include="PanoramaManager" Version="0.1.0" />
+<PackageReference Include="PanoramaManager" Version="0.1.3" />
 ```
 
 Bump the version in `RetakesAllocator/RetakesAllocator.csproj` and rebuild. This folder ships as a

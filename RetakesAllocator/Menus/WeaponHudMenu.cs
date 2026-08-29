@@ -98,9 +98,14 @@ public sealed class WeaponHudMenu
             CloseButtonId = "wsel_close",
             RowCount      = 1,            // no row pool here; the grid is driven directly
 
-            // Nothing. The layout's z-index puts it above the crosshair without the server touching
-            // anyone's HUD, and the radar flag never had a visible effect anyway.
-            HideHud       = HideHudFlags.None,
+            // z-index gets the panel above the game HUD, but not above the crosshair - that is
+            // drawn outside the layer the layout can order itself against, so it stays visible
+            // through the grid. The pawn flag is what actually removes it.
+            //
+            // Restored on close, including the closes nobody asked for: a round restart, a Dispose.
+            // The flags live on the pawn, so a player who dies with the menu open loses them with
+            // the pawn and respawns clean either way.
+            HideHud       = HideHudFlags.Crosshair,
         });
 
         _menu.OnEvent += OnEvent;

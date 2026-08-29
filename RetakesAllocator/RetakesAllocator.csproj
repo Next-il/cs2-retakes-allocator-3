@@ -17,7 +17,7 @@
              like any other dependency - no committed DLL to keep in sync. It copies next to
              the plugin on build, which is what CounterStrikeSharp needs: each plugin loads
              through a context that probes its own folder. -->
-        <PackageReference Include="PanoramaManager" Version="0.1.0" />
+        <PackageReference Include="PanoramaManager" Version="0.1.3" />
     </ItemGroup>
 
     <ItemGroup>
