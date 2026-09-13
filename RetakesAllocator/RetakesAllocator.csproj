@@ -9,15 +9,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="CounterStrikeSharp.API" Version="1.0.373" />
+        <PackageReference Include="CounterStrikeSharp.API" Version="1.0.374" />
         <PackageReference Include="CSSUniversalMenuAPI" Version="0.4.0" ExcludeAssets="runtime" />
         <PackageReference Include="RetakesPluginShared" Version="2.0.0" />
 
         <!-- The HUD menu library. Comes from nuget.org, so a clone of this fork restores it
              like any other dependency - no committed DLL to keep in sync. It copies next to
-             the plugin on build, which is what CounterStrikeSharp needs: each plugin loads
-             through a context that probes its own folder. -->
-        <PackageReference Include="PanoramaManager" Version="0.1.3" />
+             the plugin on build only because CopyLocalLockFileAssemblies is on above, and
+             CounterStrikeSharp needs it there: each plugin loads through a context that probes
+             its own folder. Turn that off and the plugin still compiles, then fails to load. -->
+        <PackageReference Include="PanoramaManager" Version="0.4.0" />
     </ItemGroup>
 
     <ItemGroup>

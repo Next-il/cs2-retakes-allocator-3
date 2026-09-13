@@ -7,7 +7,6 @@ panorama/layout/custom_game/weapon_hud.xml    the grid
 panorama/styles/custom_game/weapon_hud.css    its look
 panorama/styles/custom_game/hud_shared.css    the card, header, footer, reveal - shared chrome
 previews/weapon_hud.preview.html              open in a browser
-lib/panoramamanager.json                      engine signatures; goes in counterstrikesharp/gamedata/
 ```
 
 Tooling and the Panorama reference are **not** duplicated here - they live in
@@ -105,16 +104,16 @@ Addon-supplied layouts are still refused by the client, so today this needs a lo
 The library comes from nuget.org:
 
 ```xml
-<PackageReference Include="PanoramaManager" Version="0.1.3" />
+<PackageReference Include="PanoramaManager" Version="0.4.0" />
 ```
 
 Bump the version in `RetakesAllocator/RetakesAllocator.csproj` and rebuild. This folder ships as a
 standalone fork, so a package is the only reference that survives a clone - there is no
 PanoramaManager source tree beside it.
 
-`lib/panoramamanager.json` goes in `counterstrikesharp/gamedata/`. It carries the engine signatures,
-so a CS2 update that shifts them is a text edit on the server rather than a plugin rebuild. The
-NuGet package ships the same file under `contentFiles/any/any/gamedata/`.
+The server needs CounterStrikeSharp 1.0.374 or newer: PanoramaManager drives the HUD entity through
+its `CCSCustomHudLayout` API. Nothing else goes on the server - there is no gamedata file, and a CS2
+update is a CounterStrikeSharp update rather than a signature to re-derive.
 
 ## Turning it off
 
