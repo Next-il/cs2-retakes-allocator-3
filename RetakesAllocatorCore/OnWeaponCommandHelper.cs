@@ -15,6 +15,18 @@ public class OnWeaponCommandHelper
         return result.Item1;
     }
 
+    /// <summary>
+    /// Sync wrapper over the <see cref="CsItem"/> overload - use this rather than stringifying the
+    /// enum, see that overload for why.
+    /// </summary>
+    public static string Handle(CsItem weapon, ulong userId, RoundType? roundType, CsTeam currentTeam,
+        bool remove, out CsItem? outWeapon, CsTeam? team = null)
+    {
+        var result = HandleAsync(weapon, userId, roundType, currentTeam, remove, team).GetAwaiter().GetResult();
+        outWeapon = result.Item2;
+        return result.Item1;
+    }
+
     public static async Task<Tuple<string, CsItem?>> HandleAsync(ICollection<string> args, ulong userId,
         RoundType? roundType, CsTeam currentTeam,
         bool remove)
@@ -73,17 +85,59 @@ public class OnWeaponCommandHelper
             return Ret(Translator.Instance["weapon_preference.not_found", weaponInput]);
         }
 
-        var weapon = foundWeapons.First();
+        return await HandleResolvedAsync(foundWeapons.First(), userId, roundType, currentTeam, team, remove);
+    }
+
+    /// <summary>
+    /// The overload anything holding a real <see cref="CsItem"/> must use - menus, the AWP/scout
+    /// commands, the pickup handler.
+    ///
+    /// <para>Going through the string overload instead was a data-loss bug: CsItem has aliased
+    /// members (402 is both <c>M4A1</c> and <c>M4A4</c>, 304 both <c>MP5SD</c> and <c>MP5</c>, ...),
+    /// so <c>ToString()</c> does not round trip - <c>CsItem.M4A4.ToString()</c> yields "M4A1", which
+    /// the name lookup resolves back to <c>M4A1S</c>. Players picked M4A4 in the HUD menu and had
+    /// M4A1-S written to the database. The enum value cannot collide, so it is what we pass.</para>
+    ///
+    /// <para><paramref name="team"/> is the team whose loadout is being edited, which is not always
+    /// the team the player is on - the HUD menu edits both.</para>
+    /// </summary>
+    public static async Task<Tuple<string, CsItem?>> HandleAsync(CsItem weapon, ulong userId,
+        RoundType? roundType, CsTeam currentTeam, bool remove, CsTeam? team = null)
+    {
+        if (!Configs.GetConfigData().CanPlayersSelectWeapons())
+        {
+            return new Tuple<string, CsItem?>(Translator.Instance["weapon_preference.cannot_choose"], null);
+        }
+
+        var targetTeam = team ?? currentTeam;
+        if (targetTeam is CsTeam.None or CsTeam.Spectator)
+        {
+            return new Tuple<string, CsItem?>(Translator.Instance["weapon_preference.join_team"], null);
+        }
+
+        return await HandleResolvedAsync(weapon, userId, roundType, currentTeam, targetTeam, remove);
+    }
+
+    /// <summary>
+    /// Everything past weapon resolution - validation, allocation type, persistence. Shared by both
+    /// overloads so the name-lookup path and the enum path cannot drift apart.
+    /// </summary>
+    private static async Task<Tuple<string, CsItem?>> HandleResolvedAsync(CsItem weapon, ulong userId,
+        RoundType? roundType, CsTeam currentTeam, CsTeam team, bool remove)
+    {
+        CsItem? outWeapon = null;
+
+        Tuple<string, CsItem?> Ret(string str) => new(str, outWeapon);
 
         if (!WeaponHelpers.IsUsableWeapon(weapon))
         {
-            return Ret(Translator.Instance["weapon_preference.not_allowed", weapon]);
+            return Ret(Translator.Instance["weapon_preference.not_allowed", weapon.GetName()]);
         }
 
         var weaponRoundTypes = WeaponHelpers.GetRoundTypesForWeapon(weapon);
         if (weaponRoundTypes.Count == 0)
         {
-            return Ret(Translator.Instance["weapon_preference.invalid_weapon", weapon]);
+            return Ret(Translator.Instance["weapon_preference.invalid_weapon", weapon.GetName()]);
         }
 
         var allocationType = WeaponHelpers.GetWeaponAllocationTypeForWeaponAndRound(
@@ -105,7 +159,7 @@ public class OnWeaponCommandHelper
 
         if (allocationType is null)
         {
-            return Ret(Translator.Instance["weapon_preference.not_valid_for_team", weapon, team]);
+            return Ret(Translator.Instance["weapon_preference.not_valid_for_team", weapon.GetName(), team]);
         }
 
 

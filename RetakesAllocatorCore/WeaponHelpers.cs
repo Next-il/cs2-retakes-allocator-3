@@ -852,6 +852,18 @@ public static class WeaponHelpers
             needles.Add(needle[weaponPrefix.Length..]);
         }
 
+        // Exact enum-name hit wins over the substring scan below. CsItem has aliased members whose
+        // names are prefixes of each other - "m4a1" is contained in "M4A1S" (401) as well as being
+        // the name of 402 - and the substring scan returns them in Enum.GetNames order, so callers
+        // taking .First() got the wrong weapon. Deliberately AFTER the override table, so the chat
+        // alias `!gun m4a1` keeps meaning the silenced M4.
+        var exact = Enum.GetNames<CsItem>()
+            .FirstOrDefault(name => needles.Contains(name.ToLower()));
+        if (exact is not null)
+        {
+            return new List<CsItem> {Enum.Parse<CsItem>(exact)};
+        }
+
         return Enum.GetNames<CsItem>()
             .Where(name =>
             {

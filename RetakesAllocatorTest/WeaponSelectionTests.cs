@@ -71,7 +71,7 @@ public class WeaponSelectionTests : BaseTestFixture
     [TestCase(RoundType.HalfBuy, CsTeam.CounterTerrorist, "deag", CsItem.Deagle, "Deagle applied for Half Buy as CT.",
         "Deagle removed from Half Buy as CT.")]
     [TestCase(RoundType.FullBuy, CsTeam.CounterTerrorist, "galil", null, "Galil' is not valid", null)]
-    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "tec9", null, "Tec9' is not valid", null)]
+    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "tec9", null, "TEC9' is not valid", null)]
     [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "poop", null, "not found", null)]
     [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "galil,T", CsItem.Galil, "Galil applied for Full Buy as T.", null)]
     [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "krieg,T", CsItem.Krieg, "SG553 applied for Full Buy as T.", null)]
@@ -79,7 +79,7 @@ public class WeaponSelectionTests : BaseTestFixture
     [TestCase(RoundType.HalfBuy, CsTeam.None, "mac10,T", null, "Mac10 applied for Half Buy as T.", null)]
     [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "deag,CT", CsItem.Deagle, "Deagle applied for Pistol Round as CT.", null)]
     [TestCase(RoundType.FullBuy, CsTeam.CounterTerrorist, "galil,CT", null, "Galil' is not valid", null)]
-    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "tec9,CT", null, "Tec9' is not valid", null)]
+    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "tec9,CT", null, "TEC9' is not valid", null)]
     [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "poop,T", null, "not found", null)]
     [TestCase(null, CsTeam.Terrorist, "ak", null, "AK47 applied for Full Buy as T.", "AK47 removed from Full Buy as T.")]
     [TestCase(RoundType.FullBuy, CsTeam.Spectator, "ak", null, "must join a team", "must join a team")]
@@ -680,6 +680,40 @@ public class WeaponSelectionTests : BaseTestFixture
             RoundTypeManager.Instance.SetNextRoundTypeOverride(null);
         }
     }
+    /// <summary>
+    /// The bug players hit: pick M4A4 in the HUD menu, it reports saved, reopen the menu and M4A1-S
+    /// is selected. The menu held the right CsItem all along - the write path stringified it and
+    /// CsItem.M4A4.ToString() is "M4A1", which resolves back to M4A1S.
+    /// </summary>
+    [Test]
+    [TestCase(CsItem.M4A4, RoundType.FullBuy, CsTeam.CounterTerrorist, WeaponAllocationType.FullBuyPrimary)]
+    [TestCase(CsItem.M4A1S, RoundType.FullBuy, CsTeam.CounterTerrorist, WeaponAllocationType.FullBuyPrimary)]
+    [TestCase(CsItem.USPS, RoundType.Pistol, CsTeam.CounterTerrorist, WeaponAllocationType.PistolRound)]
+    [TestCase(CsItem.HKP2000, RoundType.Pistol, CsTeam.CounterTerrorist, WeaponAllocationType.PistolRound)]
+    [TestCase(CsItem.MP5SD, RoundType.HalfBuy, CsTeam.CounterTerrorist, WeaponAllocationType.HalfBuyPrimary)]
+    [TestCase(CsItem.MP7, RoundType.HalfBuy, CsTeam.CounterTerrorist, WeaponAllocationType.HalfBuyPrimary)]
+    [TestCase(CsItem.Deagle, RoundType.FullBuy, CsTeam.Terrorist, WeaponAllocationType.Secondary)]
+    [TestCase(CsItem.Revolver, RoundType.FullBuy, CsTeam.Terrorist, WeaponAllocationType.Secondary)]
+    [TestCase(CsItem.Tec9, RoundType.Pistol, CsTeam.Terrorist, WeaponAllocationType.PistolRound)]
+    [TestCase(CsItem.CZ, RoundType.Pistol, CsTeam.Terrorist, WeaponAllocationType.PistolRound)]
+    public async Task MenuSelectionStoresTheExactWeapon(
+        CsItem weapon, RoundType roundType, CsTeam team, WeaponAllocationType allocationType)
+    {
+        Configs.GetConfigData().EnableAllWeaponsForEveryone = true;
+
+        var result = await OnWeaponCommandHelper.HandleAsync(weapon, TestSteamId, roundType, team, false, team);
+        Assert.That(StripChatColors(result.Item1), Does.Not.Contain("not valid"));
+
+        var stored = (await Queries.GetUserSettings(TestSteamId))?.GetWeaponPreference(team, allocationType);
+        Assert.That(stored, Is.EqualTo(weapon), "stored weapon differs from the one the menu sent");
+
+        result = await OnWeaponCommandHelper.HandleAsync(weapon, TestSteamId, roundType, team, true, team);
+        Assert.That(StripChatColors(result.Item1), Does.Not.Contain("not valid"));
+
+        stored = (await Queries.GetUserSettings(TestSteamId))?.GetWeaponPreference(team, allocationType);
+        Assert.That(stored, Is.Null);
+    }
+
     [Test]
     public async Task EnableAllWeaponsConfigAllowsCrossTeamWeapons()
     {

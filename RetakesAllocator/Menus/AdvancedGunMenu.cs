@@ -506,10 +506,11 @@ public class AdvancedGunMenu
     private void ApplyWeaponSelection(CCSPlayerController player, ulong steamId, CsTeam team,
         RoundType roundType, CsItem weapon)
     {
-        var weaponName = weapon.GetName();
         _ = Task.Run(async () =>
         {
-            var result = await OnWeaponCommandHelper.HandleAsync(new[] { weaponName }, steamId, roundType, team, false);
+            // The CsItem overload - stringifying it here would collapse M4A4 onto M4A1-S, see
+            // OnWeaponCommandHelper.
+            var result = await OnWeaponCommandHelper.HandleAsync(weapon, steamId, roundType, team, false, team);
             if (string.IsNullOrWhiteSpace(result.Item1))
             {
                 return;

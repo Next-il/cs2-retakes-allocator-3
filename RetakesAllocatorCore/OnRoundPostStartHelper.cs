@@ -395,7 +395,13 @@ public class OnRoundPostStartHelper
                 grantedSnipersPerTeam,
                 remainingPreferredSniperReservations
             );
-            items.AddRange(weapons);
+            // Primary before the pistol. The game leaves a knife-only player holding the first gun
+            // they are given and does not switch for the ones after, so giving the pistol first had
+            // everyone spawn with it out. K4-Arenas and Deathmatch give in this order for the same
+            // reason. The slot select below is only a backup - it is a client command, and on its
+            // own it was not enough.
+            items.AddRange(weapons.OrderBy(weapon =>
+                WeaponHelpers.GetSlotTypeForItem(weapon) == ItemSlotType.Primary ? 0 : 1));
 
             if (weaponSelection.EnemyStuffGranted && team is CsTeam.Terrorist or CsTeam.CounterTerrorist)
             {
@@ -437,7 +443,12 @@ public class OnRoundPostStartHelper
                 }
             }
 
-            allocateItemsForPlayer(player, items, team == CsTeam.Terrorist ? "slot5" : "slot1");
+            // Select the gun we just handed out, for both teams. This used to send "slot5" to Ts,
+            // which is the C4 slot - nobody carries a C4 on a retakes server, so the command was a
+            // no-op and Ts kept whatever the give loop happened to leave in hand (the pistol).
+            allocateItemsForPlayer(player, items, WeaponHelpers.GetSlotNameForSlotType(
+                roundType == RoundType.Pistol ? ItemSlotType.Secondary : ItemSlotType.Primary
+            ));
         }
     }
 }

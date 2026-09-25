@@ -400,7 +400,7 @@ public class RetakesAllocator : BasePlugin
                 ?.GetWeaponPreference(currentTeam, WeaponAllocationType.Preferred);
 
             return await OnWeaponCommandHelper.HandleAsync(
-                new List<string> {CsItem.AWP.ToString()},
+                CsItem.AWP,
                 playerId,
                 RoundTypeManager.Instance.GetCurrentRoundType(),
                 currentTeam,
@@ -451,7 +451,7 @@ public class RetakesAllocator : BasePlugin
             var removing = currentPreferredSetting == CsItem.Scout;
 
             return await OnWeaponCommandHelper.HandleAsync(
-                new List<string> { CsItem.Scout.ToString() },
+                CsItem.Scout,
                 playerId,
                 RoundTypeManager.Instance.GetCurrentRoundType(),
                 currentTeam,
@@ -906,13 +906,15 @@ public class RetakesAllocator : BasePlugin
                 }
             }
 
-            if (!replacedWeapon)
+            // Only pull the player back to their gun if the rejected purchase was a gun. A rejected
+            // nade or util buy must not yank them off whatever they were holding.
+            if (!replacedWeapon && WeaponHelpers.IsWeapon(item))
             {
                 AddTimer(0.1f, () =>
                 {
-                    if (Helpers.PlayerIsValid(controller) && controller.UserId is not null)
+                    if (Helpers.PlayerIsValid(controller))
                     {
-                        NativeAPI.IssueClientCommand((int) controller.UserId, slotToSelect);
+                        SelectSlot(controller, slotToSelect);
                     }
                 });
             }
@@ -955,19 +957,17 @@ public class RetakesAllocator : BasePlugin
 
         if (isPreferred)
         {
-            var itemName = Enum.GetName(item);
-            if (itemName is not null)
-            {
-                var message = OnWeaponCommandHelper.Handle(
-                    new List<string> {itemName},
-                    Helpers.GetSteamId(controller),
-                    RoundTypeManager.Instance.GetCurrentRoundType(),
-                    team,
-                    false,
-                    out _
-                );
-                Helpers.WriteNewlineDelimited(message, controller.PrintToChat);
-            }
+            // The item itself, not its name - Enum.GetName round trips through the name lookup
+            // wrong for aliased CsItem members (see OnWeaponCommandHelper).
+            var message = OnWeaponCommandHelper.Handle(
+                item,
+                Helpers.GetSteamId(controller),
+                RoundTypeManager.Instance.GetCurrentRoundType(),
+                team,
+                false,
+                out _
+            );
+            Helpers.WriteNewlineDelimited(message, controller.PrintToChat);
         }
 
         return HookResult.Continue;
@@ -1324,13 +1324,42 @@ public class RetakesAllocator : BasePlugin
             {
                 AddTimer(0.1f, () =>
                 {
-                    if (Helpers.PlayerIsValid(player) && player.PawnIsAlive && player.UserId is not null)
+                    if (Helpers.PlayerIsValid(player) && player.PawnIsAlive)
                     {
-                        NativeAPI.IssueClientCommand((int) player.UserId, slotToSelect);
+                        SelectSlot(player, slotToSelect);
                     }
                 });
             }
         });
+    }
+
+    /// <summary>
+    /// Ask the client to switch to the given slot, unless it is already holding something from
+    /// that slot (avoids a redundant re-deploy animation).
+    /// </summary>
+    private static void SelectSlot(CCSPlayerController player, string slotToSelect)
+    {
+        if (!Helpers.PlayerIsValid(player))
+        {
+            return;
+        }
+
+        var activeWeapon = player.PlayerPawn?.Value?.WeaponServices?.ActiveWeapon.Value;
+        if (activeWeapon is {IsValid: true})
+        {
+            var activeSlotType = WeaponHelpers.GetSlotTypeForItem(Utils.ToEnum<CsItem>(activeWeapon.DesignerName));
+            if (activeSlotType is not null &&
+                WeaponHelpers.GetSlotNameForSlotType(activeSlotType) == slotToSelect)
+            {
+                return;
+            }
+        }
+
+        // NativeAPI.IssueClientCommand takes a player SLOT, not a userid. Userid is
+        // (connection serial << 8) | slot, so passing it worked only until a slot had been
+        // reused once, after which the command was silently dropped. ExecuteClientCommand
+        // passes player.Slot.
+        player.ExecuteClientCommand(slotToSelect);
     }
 
     private void ScheduleBombSiteAnnouncement()

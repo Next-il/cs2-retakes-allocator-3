@@ -93,10 +93,10 @@ public sealed class WeaponHudMenu
 
         _menu = Panorama.Spawn(Layout, new LayoutContract
         {
-            RootPanelId   = "PanoramaRoot",
+            RootPanelId   = "WeaponSelRoot",
             RevealClass   = "show",       // the layout animates in rather than collapsing
             CloseButtonId = "wsel_close",
-            RowCount      = 1,            // no row pool here; the grid is driven directly
+            RowCount      = 0,            // no rowN pool; the grid is addressed directly
 
             // z-index gets the panel above the game HUD, but not above the crosshair - that is
             // drawn outside the layer the layout can order itself against, so it stays visible
@@ -364,9 +364,14 @@ public sealed class WeaponHudMenu
     {
         var steamId = player.SteamID;
 
+        // The slot, not just the controller. The controller can go invalid across the database
+        // round trip, and the completion below has to be able to take the panel down anyway - a
+        // menu left drawn on "Saving..." is exactly the bug this path is reported for.
+        var slot = player.Slot;
+
         // Snapshot what to write before leaving the game thread - draft is mutated by clicks, and
         // the player may close the menu while the writes are in flight.
-        var pending = new List<(int Group, CsItem? Weapon)>();
+        var pending = new List<(int Group, CsItem Weapon, bool Remove)>();
 
         for (var g = 0; g < Groups; g++)
         {
@@ -376,7 +381,14 @@ public sealed class WeaponHudMenu
             if (hasChoice == hadChoice && (!hasChoice || chosen.Equals(original)))
                 continue;
 
-            pending.Add((g, hasChoice ? chosen : null));
+            // A removal still has to NAME the weapon. HandleAsync derives the allocation type from
+            // it - which slot to clear, and whether it is the preferred/AWP slot - so it returns its
+            // usage text and clears nothing when handed no arguments. Deselecting therefore has to
+            // send whatever was there before, with remove set.
+            if (hasChoice)
+                pending.Add((g, chosen, false));
+            else if (hadChoice)
+                pending.Add((g, original, true));
         }
 
         if (pending.Count == 0)
@@ -391,46 +403,101 @@ public sealed class WeaponHudMenu
 
         Task.Run(async () =>
         {
-            foreach (var (group, weapon) in pending)
+            var failed = 0;
+
+            // NOTHING may escape this Task.Run. The per-entry catch below covers the awaited call,
+            // but the tuple deconstruction and the loop itself sit outside it - and anything thrown
+            // there skipped the completion entirely, so draft.Saving stayed true and the footer read
+            // "Saving..." for good, with every later click a no-op. The completion is scheduled from
+            // a finally so it runs either way.
+            try
             {
-                var (_, _, team, round) = Categories[group];
-
-                // Route through the same handler the chat command uses, so validation, allocation
-                // type resolution and persistence stay in one place.
-                var (message, _) = await OnWeaponCommandHelper.HandleAsync(
-                    weapon is not null ? [weapon.Value.ToString(), TeamArg(team)] : [],
-                    steamId,
-                    roundType: round,
-                    currentTeam: team,
-                    remove: weapon is null);
-
-                if (!string.IsNullOrEmpty(message))
+                foreach (var (group, weapon, remove) in pending)
                 {
-                    _logger.LogDebug(
-                        "[WeaponHud] {SteamId} {Category}: {Message}", steamId, Categories[group].Label, message);
+                    var (_, _, team, round) = Categories[group];
+
+                    // Caught per entry as well as around the loop. One category that cannot be
+                    // written should cost that category, not the other nine.
+                    try
+                    {
+                        // Route through the same handler the chat command uses, so validation,
+                        // allocation type resolution and persistence stay in one place.
+                        // Hand over the CsItem, never its name. CsItem aliases members (402 is both
+                        // M4A1 and M4A4), so ToString() does not round trip - M4A4 came back out of the
+                        // name lookup as M4A1-S and that is what got saved.
+                        var (message, _) = await OnWeaponCommandHelper.HandleAsync(
+                            weapon,
+                            steamId,
+                            roundType: round,
+                            currentTeam: team,
+                            remove: remove,
+                            team: team);
+
+                        if (!string.IsNullOrEmpty(message))
+                        {
+                            _logger.LogDebug(
+                                "[WeaponHud] {SteamId} {Category}: {Message}", steamId, Categories[group].Label, message);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failed++;
+                        _logger.LogError(ex, "[WeaponHud] saving {Category} failed for {SteamId}",
+                            Categories[group].Label, steamId);
+                    }
                 }
             }
-
-            Server.NextFrame(() =>
+            catch (Exception ex)
             {
-                if (player is not { IsValid: true })
-                    return;
+                failed = pending.Count;
+                _logger.LogError(ex, "[WeaponHud] save loop failed for {SteamId}", steamId);
+            }
+            finally
+            {
+                var outcome = failed;
 
-                foreach (var (group, weapon) in pending)
+                Server.NextFrame(() =>
                 {
-                    if (weapon is null)
-                    {
-                        draft.Original.Remove(group);
-                    }
-                    else
-                    {
-                        draft.Original[group] = weapon.Value;
-                    }
-                }
+                    // Cleared before anything that can bail out. It exists only to stop a second
+                    // Save while one is in flight, so leaving it set makes the button permanently
+                    // dead - including for a player who disconnects and comes back to the same
+                    // draft.
+                    draft.Saving = false;
 
-                _menu.SetVariableFor(player, "menu_footer", $"Saved {pending.Count} change(s)");
-                _menu.Close(player);
-            });
+                    foreach (var (group, weapon, remove) in pending)
+                    {
+                        // Keeps the draft in step with what was just written, so reopening without
+                        // closing shows the saved state rather than the pre-save one. Done whether
+                        // or not the player is still here - the rows were written either way.
+                        if (remove)
+                            draft.Original.Remove(group);
+                        else
+                            draft.Original[group] = weapon;
+                    }
+
+                    // Resolved fresh from the slot rather than trusting the captured controller,
+                    // which may have gone invalid while the writes were in flight. The old code
+                    // bailed on that check BEFORE the close, leaving the panel on screen reading
+                    // "Saving..." with nothing that would ever take it off.
+                    var viewer = Utilities.GetPlayerFromSlot(slot);
+                    var ours   = viewer is { IsValid: true } && viewer.SteamID == steamId;
+
+                    // Says what actually happened. Reporting a clean save after a failure is how a
+                    // preference silently not persisting looks like the menu working.
+                    if (ours)
+                    {
+                        _menu.SetVariableFor(viewer!, "menu_footer", outcome == 0
+                            ? $"Saved {pending.Count} change(s)"
+                            : $"Saved {pending.Count - outcome} of {pending.Count} - {outcome} failed");
+                    }
+
+                    // By slot, and not conditional on the controller being there. Skipped only when
+                    // somebody ELSE has taken the slot in the meantime - closing then would scrub
+                    // their panel, and their join already reset the slot.
+                    if (ours || viewer is not { IsValid: true })
+                        _menu.Close(slot);
+                });
+            }
         });
     }
 
@@ -492,8 +559,6 @@ public sealed class WeaponHudMenu
         [CsItem.CZ] = "cz75a",
         [CsItem.Dualies] = "elite",
     };
-
-    private static string TeamArg(CsTeam team) => team == CsTeam.Terrorist ? "T" : "CT";
 
     /// <summary>
     /// Tile captions. <c>ToString()</c> is unusable here - it returns enum names like

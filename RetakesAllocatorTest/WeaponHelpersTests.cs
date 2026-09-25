@@ -22,6 +22,48 @@ public class WeaponHelpersTests : BaseTestFixture
         Assert.That(canAllocate, Is.EqualTo(expected));
     }
 
+    /// <summary>
+    /// CsItem aliases members - 402 is both M4A1 and M4A4, 304 both MP5SD and MP5, 209 both
+    /// Revolver and R8 - so ToString() does not name the member you started from, and the name
+    /// lookup resolved "M4A1" (which is what CsItem.M4A4.ToString() returns) back to M4A1S. That
+    /// wrote M4A1-S every time a player picked M4A4. Nothing may go weapon -> string -> weapon and
+    /// come out different.
+    /// </summary>
+    [Test]
+    public void EveryWeaponNameRoundTripsToTheSameItem()
+    {
+        Assert.Multiple(() =>
+        {
+            foreach (var weapon in WeaponHelpers.AllWeapons)
+            {
+                var found = WeaponHelpers.FindValidWeaponsByName(weapon.GetName());
+
+                Assert.That(found, Is.Not.Empty, $"{weapon.GetName()} resolved to nothing");
+                Assert.That(found.First(), Is.EqualTo(weapon), $"{weapon.GetName()} resolved to the wrong item");
+            }
+        });
+    }
+
+    /// <summary>
+    /// The chat aliases stay put - `!gun m4a1` has always meant the silenced M4, and the exact-name
+    /// pass added to the lookup must not out-rank the override table.
+    /// </summary>
+    [Test]
+    [TestCase("m4a1", CsItem.M4A1S)]
+    [TestCase("m4a1-s", CsItem.M4A1S)]
+    [TestCase("m4a1s", CsItem.M4A1S)]
+    [TestCase("m4a4", CsItem.M4A4)]
+    [TestCase("mp5", CsItem.MP5SD)]
+    [TestCase("usp", CsItem.USPS)]
+    [TestCase("p2000", CsItem.HKP2000)]
+    [TestCase("cz", CsItem.CZ)]
+    [TestCase("r8", CsItem.Revolver)]
+    [TestCase("scout", CsItem.SSG08)]
+    public void WeaponNameAliasesResolveAsDocumented(string needle, CsItem expected)
+    {
+        Assert.That(WeaponHelpers.FindValidWeaponsByName(needle).First(), Is.EqualTo(expected));
+    }
+
     [Test]
     public void EnableAllWeaponsConfigAllowsCrossTeamOptions()
     {
