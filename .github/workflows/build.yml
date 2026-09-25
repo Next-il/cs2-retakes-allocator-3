@@ -44,14 +44,17 @@ jobs:
       # The plugin folder exactly as ~/Projects/HudMenu/package.sh ships it: the whole build output
       # (CopyLocalLockFileAssemblies is on - EF Core, the sqlite natives under runtimes/ and the rest
       # all load from here), minus CounterStrikeSharp.API, which belongs to the host, and pdbs. The
-      # panorama files go next to it for the workshop addon.
+      # custom gamedata goes under the plugin's own gamedata/ folder, where CustomGameData reads it -
+      # servers with AutoUpdateSignatures off would otherwise start without it. The panorama files go
+      # next to it for the workshop addon.
       - name: Stage release layout
         run: |
           set -e
-          mkdir -p "out/$PLUGIN" out/workshop/panorama/layout/custom_game out/workshop/panorama/styles/custom_game
+          mkdir -p "out/$PLUGIN/gamedata" out/workshop/panorama/layout/custom_game out/workshop/panorama/styles/custom_game
           cp -R "$OUTPUT/." "out/$PLUGIN/"
           find out -name '*.pdb' -delete
           find out -name 'CounterStrikeSharp.API.dll' -delete
+          cp Resources/RetakesAllocator_gamedata.json "out/$PLUGIN/gamedata/"
           cp hud/panorama/layout/custom_game/*.xml out/workshop/panorama/layout/custom_game/
           cp hud/panorama/styles/custom_game/*.css out/workshop/panorama/styles/custom_game/
 
@@ -63,6 +66,7 @@ jobs:
           test -f "out/$PLUGIN/RetakesAllocatorCore.dll"
           test -f "out/$PLUGIN/PanoramaManager.dll"
           test -f "out/$PLUGIN/RetakesPluginShared.dll"
+          test -f "out/$PLUGIN/gamedata/RetakesAllocator_gamedata.json"
           test -d "out/$PLUGIN/runtimes/linux-x64"
           test -f "out/$PLUGIN/lang/en.json"
           find out -type f | sort
