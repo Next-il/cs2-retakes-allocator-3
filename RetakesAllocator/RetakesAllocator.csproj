@@ -18,7 +18,7 @@
              the plugin on build only because CopyLocalLockFileAssemblies is on above, and
              CounterStrikeSharp needs it there: each plugin loads through a context that probes
              its own folder. Turn that off and the plugin still compiles, then fails to load. -->
-        <PackageReference Include="PanoramaManager" Version="0.4.0" />
+        <PackageReference Include="PanoramaManager" Version="0.4.2" />
     </ItemGroup>
 
     <ItemGroup>
