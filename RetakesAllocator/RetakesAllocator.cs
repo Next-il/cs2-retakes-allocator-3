@@ -48,6 +48,7 @@ public class RetakesAllocator : BasePlugin
     private bool _bombsiteAnnounceOneTime;
     private bool _weaponDataSignatureFailed;
     private WeaponHudMenu? _weaponHud;
+    private bool _isDatabaseMigrated;
     private bool            _warnedBuymenuHasNoPlayer;
 
     private static readonly string[] BuyMenuCommands =
@@ -97,6 +98,12 @@ public class RetakesAllocator : BasePlugin
             ResetState();
             Log.Debug($"Setting map name {mapName}");
             RoundTypeManager.Instance.SetMap(mapName);
+
+            // The database was down when the plugin loaded - try again now
+            if (Configs.GetConfigData().MigrateOnStartup && !_isDatabaseMigrated)
+            {
+                TryMigrateDatabase();
+            }
         });
 
         var useCustomGameData =
@@ -133,9 +140,15 @@ public class RetakesAllocator : BasePlugin
 
         AddTimer(0.1f, () => { GetRetakesPluginEventSender().RetakesPluginEventHandlers += RetakesEventHandler; });
 
+        // Load must not throw because the database is unreachable. CSS loads plugins before the game
+        // loop starts and only queues their event hooks then. When Load throws, CSS's cleanup can't find
+        // the queued hooks, drops their callbacks anyway, and installs the hooks once the game loop
+        // starts - pointing at freed delegates. The first round_end or player_disconnect then aborts
+        // the server ("A callback was made on a garbage collected delegate"): Retakes 624 on 2026-11-18
+        // and 621 on 2026-11-19, both booted while the DB connection was failing.
         if (Configs.GetConfigData().MigrateOnStartup)
         {
-            Queries.Migrate();
+            TryMigrateDatabase();
         }
 
         if (useCustomGameData)
@@ -192,7 +205,12 @@ public class RetakesAllocator : BasePlugin
         ResetState(loadConfig: false);
         Queries.Disconnect();
 
-        GetRetakesPluginEventSender().RetakesPluginEventHandlers -= RetakesEventHandler;
+        // Not GetRetakesPluginEventSender(): that throws when Retakes never registered its capability
+        // (Retakes loads after this plugin at boot), and an Unload that throws skips the rest of it.
+        if (RetakesPluginEventSender is not null)
+        {
+            RetakesPluginEventSender.RetakesPluginEventHandlers -= RetakesEventHandler;
+        }
 
         if (Configs.GetConfigData().EnableCanAcquireHook && CustomFunctions != null)
         {
@@ -203,6 +221,23 @@ public class RetakesAllocator : BasePlugin
         {
             // Clear references to custom game data to avoid native calls after unload
             CustomFunctions = null;
+        }
+    }
+
+    /// <summary>
+    /// Applies the database migrations. A failure is logged, not thrown, and the next map start tries
+    /// again; until then the player settings queries fail on their own and log.
+    /// </summary>
+    private void TryMigrateDatabase()
+    {
+        try
+        {
+            Queries.Migrate();
+            _isDatabaseMigrated = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Database migration failed (the database may be unreachable), retrying on the next map start");
         }
     }
 
