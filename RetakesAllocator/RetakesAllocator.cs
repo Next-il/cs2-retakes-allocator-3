@@ -171,7 +171,11 @@ public class RetakesAllocator : BasePlugin
     {
         if (loadConfig)
         {
-            Configs.Load(ModuleDirectory, true);
+            // Read only. The config is one file in the Mounts repo shared by every server on the node,
+            // and this runs on every load and game restart: writing it back here (File.WriteAllText
+            // truncates first) let another server read it empty and fail to load the Allocator
+            // (468 and 469, 2026-11-20).
+            Configs.Load(ModuleDirectory);
         }
 
         Translator.Initialize(Localizer);

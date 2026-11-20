@@ -16,6 +16,12 @@ public static class Configs
     private static readonly string ConfigDirectoryName = "config";
     private static readonly string ConfigFileName = "config.json";
 
+    // The config is one file shared by every server on a node (a Mounts bind mount). While a server
+    // still on an older build rewrites it, a read can land mid-write and see an empty or cut-off
+    // file, so a read is retried a few times before giving up.
+    private const int ReadAttempts = 4;
+    private const int ReadRetryDelayMs = 50;
+
     private static string? _configFilePath;
     private static ConfigData? _configData;
 
@@ -67,8 +73,22 @@ public static class Configs
         _configFilePath = Path.Combine(configFileDirectory, ConfigFileName);
         if (File.Exists(_configFilePath))
         {
-            var json = File.ReadAllText(_configFilePath);
-            _configData = DeserializeConfigData(json);
+            var (loaded, error) = ReadConfigData(_configFilePath);
+            if (loaded is null)
+            {
+                // Already running with a config (a game restart or css_reload_allocator_config): keep it
+                // rather than throw out of an event handler. On the first load there is nothing to fall
+                // back to, so the plugin fails to load as before.
+                if (_configData is not null)
+                {
+                    Log.Warn($"Could not read {_configFilePath} ({error?.Message}), keeping the config already loaded");
+                    return _configData;
+                }
+
+                throw error ?? new Exception("Failed to load configs.");
+            }
+
+            _configData = loaded;
         }
         else
         {
@@ -97,6 +117,36 @@ public static class Configs
         configData.Validate();
         _configData = configData;
         return _configData;
+    }
+
+    private static (ConfigData? Config, Exception? Error) ReadConfigData(string path)
+    {
+        Exception? lastError = null;
+
+        for (var attempt = 1; attempt <= ReadAttempts; attempt++)
+        {
+            try
+            {
+                var json = File.ReadAllText(path);
+                if (!string.IsNullOrWhiteSpace(json))
+                {
+                    return (DeserializeConfigData(json), null);
+                }
+
+                lastError = new Exception($"{path} is empty");
+            }
+            catch (Exception e) when (e is JsonException or IOException)
+            {
+                lastError = e;
+            }
+
+            if (attempt < ReadAttempts)
+            {
+                Thread.Sleep(ReadRetryDelayMs);
+            }
+        }
+
+        return (null, lastError);
     }
 
     private static void SaveConfigData(ConfigData configData)
