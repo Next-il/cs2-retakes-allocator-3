@@ -36,7 +36,6 @@ public class RetakesAllocator : BasePlugin
     public override string ModuleDescription => "https://github.com/yonilerner/cs2-retakes-allocator";
 
     private readonly AllocatorMenuManager _allocatorMenuManager = new();
-    private readonly AdvancedGunMenu _advancedGunMenu = new();
     private readonly Dictionary<CCSPlayerController, Dictionary<ItemSlotType, CsItem>> _allocatedPlayerItems = new();
     private IRetakesPluginEventSender? RetakesPluginEventSender { get; set; }
 
@@ -72,15 +71,13 @@ public class RetakesAllocator : BasePlugin
         ResetState();
         Batteries.Init();
 
-        // Panorama weapon grid. Replaces the chat-menu !guns screen; the allocator's config,
-        // validation and database are untouched - this only presses the same buttons. Leaving
-        // EnableHUDMenu off skips all of it and the SharpModMenu screen behaves exactly as before.
+        // The Panorama weapon grid is the gun menu; the allocator's config, validation and database
+        // are untouched - it only presses the same buttons. With EnableHUDMenu off there is no menu,
+        // only the chat commands (!gun, !awp, !ssg, !zeus, !enemy).
         if (Configs.GetConfigData().EnableHUDMenu)
         {
             Panorama.Init(this);
             _weaponHud = new WeaponHudMenu(Logger);
-
-            AdvancedGunMenu.PanoramaMenuOverride = _weaponHud;
 
             if (!Panorama.CanReceiveClicks)
             {
@@ -199,13 +196,11 @@ public class RetakesAllocator : BasePlugin
     {
         if (_weaponHud is not null)
         {
-            AdvancedGunMenu.PanoramaMenuOverride = null;
             _weaponHud.Dispose();
             Panorama.Shutdown();
         }
 
         Log.Debug("Unloaded");
-        _advancedGunMenu.Cleanup();
         ResetState(loadConfig: false);
         Queries.Disconnect();
 
@@ -1083,11 +1078,6 @@ public class RetakesAllocator : BasePlugin
 
     public void OnTick()
     {
-        if (!string.IsNullOrEmpty(Configs.GetConfigData().InGameGunMenuCenterCommands))
-        {
-            _advancedGunMenu.OnTick();
-        }
-
         if (_announceBombsite && !string.IsNullOrEmpty(_bombsite))
         {
             var playerEntities = Utilities.FindAllEntitiesByDesignerName<CCSPlayerController>("cs_player_controller");
@@ -1231,39 +1221,12 @@ public class RetakesAllocator : BasePlugin
     }
 
 
-    [GameEventHandler]
-    public HookResult OnEventPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
-    {
-        if (!string.IsNullOrEmpty(Configs.GetConfigData().InGameGunMenuCenterCommands))
-        {
-            _advancedGunMenu.OnEventPlayerDisconnect(@event, info);
-        }
-
-        return HookResult.Continue;
-    }
-
-    [GameEventHandler(HookMode.Post)]
-    public HookResult OnEventPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
-    {
-        if (!string.IsNullOrEmpty(Configs.GetConfigData().InGameGunMenuCenterCommands))
-        {
-            _advancedGunMenu.OnEventPlayerSpawn(@event, info);
-        }
-
-        return HookResult.Continue;
-    }
-
     // ReSharper disable once RedundantArgumentDefaultValue
     [GameEventHandler(HookMode.Post)]
     public HookResult OnEventPlayerChat(EventPlayerChat @event, GameEventInfo info)
     {
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (@event == null) return HookResult.Continue;
-
-        if (!string.IsNullOrEmpty(Configs.GetConfigData().InGameGunMenuCenterCommands))
-        {
-            _advancedGunMenu.OnEventPlayerChat(@event, info);
-        }
 
         var eventplayer = @event.Userid;
         var eventmessage = @event.Text;
@@ -1273,8 +1236,16 @@ public class RetakesAllocator : BasePlugin
         if (player == null || !player.IsValid) return HookResult.Continue;
 
         if (string.IsNullOrWhiteSpace(eventmessage)) return HookResult.Continue;
-        string trimmedMessageStart = eventmessage.TrimStart();
-        string message = trimmedMessageStart.TrimEnd();
+        string message = eventmessage.Trim();
+
+        // InGameGunMenuCenterCommands ("guns", "/guns", ...) open the weapon grid. "!guns" also
+        // reaches css_guns as a command in the same frame; the grid's own debounce keeps it to one.
+        var commands = Configs.GetConfigData().InGameGunMenuCenterCommands;
+        if (_weaponHud is not null && !string.IsNullOrEmpty(commands)
+            && commands.Split(',').Any(cmd => cmd.Trim().Equals(message, StringComparison.OrdinalIgnoreCase)))
+        {
+            _weaponHud.Open(player);
+        }
 
         return HookResult.Continue;
     }

@@ -5,18 +5,21 @@ using CounterStrikeSharp.API.Modules.Utils;
 using PanoramaManager;
 using Microsoft.Extensions.Logging;
 using RetakesAllocatorCore;
+using RetakesAllocatorCore.Config;
 using RetakesAllocatorCore.Db;
 
 namespace RetakesAllocator.AdvancedMenus;
 
 /// <summary>
-/// The <c>!guns</c> screen as a Panorama grid instead of a chat menu.
+/// The <c>!guns</c> screen: a Panorama grid. It is the only gun menu - the SharpModMenu screen it used
+/// to sit in front of is gone, and what only that screen offered lives here now: the Random sniper
+/// pick, the AWP / SSG access checks, and the Zeus and enemy-weapons rows.
 ///
 /// <para>Reads nothing of its own: the categories come from
 /// <see cref="WeaponHelpers.GetPossibleWeaponsForAllocationType"/>, which is already filtered by the
-/// config's <c>UsableWeapons</c>, and saving goes through <see cref="OnWeaponCommandHelper"/> - the
-/// same path the chat command uses. So the allocator's config, validation and database are untouched
-/// and this is only a different way to press the same buttons.</para>
+/// config's <c>UsableWeapons</c>, and saving goes through <see cref="OnWeaponCommandHelper"/> and
+/// <see cref="Queries"/> - the same paths the chat commands use. So the allocator's config, validation
+/// and database are untouched and this is only a different way to press the same buttons.</para>
 ///
 /// <para><b>Selections are not saved as you click.</b> They are held per player until Save, so Close
 /// discards. That is what makes Save a real button.</para>
@@ -24,6 +27,35 @@ namespace RetakesAllocator.AdvancedMenus;
 public sealed class WeaponHudMenu
 {
     private const string Layout = "panorama/layout/custom_game/weapon_hud.vxml_c";
+
+    /// <summary>Matches the option-row pool in <c>weapon_hud.xml</c>: rows, and buttons per row.</summary>
+    private const int OptionRows    = 3;
+    private const int OptionButtons = 4;
+
+    /// <summary>"!guns" in chat arrives twice in one frame: once as the chat trigger, once as css_guns.</summary>
+    private static readonly TimeSpan OpenDebounce = TimeSpan.FromSeconds(0.25);
+
+    private enum OptionKind { Zeus, EnemyStuff }
+
+    private static readonly string[] ZeusChoices = ["OFF", "ON"];
+
+    private static readonly string[] EnemyChoices = ["OFF", "T", "CT", "BOTH"];
+
+    private static readonly EnemyStuffTeamPreference[] EnemyValues =
+    [
+        EnemyStuffTeamPreference.None,
+        EnemyStuffTeamPreference.Terrorist,
+        EnemyStuffTeamPreference.CounterTerrorist,
+        EnemyStuffTeamPreference.Both,
+    ];
+
+    /// <summary>
+    /// What this player may pick, read on the game thread at open (the permission checks go through
+    /// CounterStrikeSharp's admin manager). "Shown" is the server's switch, "Usable" adds the VIP check:
+    /// a VIP-only sniper is drawn but locked, so players see what VIP gets.
+    /// </summary>
+    private readonly record struct Access(
+        bool AwpShown, bool AwpUsable, bool SsgShown, bool SsgUsable, bool Zeus, bool EnemyStuff);
 
     /// <summary>Matches the pool in <c>weapon_hud.xml</c>. Ten categories, ten options each, laid
     /// out five per line. Changing these means changing the layout and shipping a new VPK.</summary>
@@ -77,6 +109,15 @@ public sealed class WeaponHudMenu
         /// one is applied. A tile with two icon classes draws whichever the stylesheet lists last.</summary>
         public readonly Dictionary<string, string> Icons = new();
 
+        /// <summary>Tiles drawn but not pickable: a VIP-only sniper for a player without VIP.</summary>
+        public readonly HashSet<(int Group, int Column)> Locked = [];
+
+        /// <summary>The option rows shown, in order (Zeus, enemy weapons), each a choice index that is
+        /// uncommitted until Save like the tiles.</summary>
+        public readonly List<OptionKind> Rows = [];
+        public readonly Dictionary<OptionKind, int> OptionChosen = new();
+        public readonly Dictionary<OptionKind, int> OptionOriginal = new();
+
         /// <summary>Set while a save is in flight. The client decides how often it sends a click, so
         /// without this, holding Save queues one set of database writes per frame against the same
         /// rows.</summary>
@@ -86,6 +127,7 @@ public sealed class WeaponHudMenu
     private readonly PanelHandle _menu;
     private readonly ILogger    _logger;
     private readonly Dictionary<ulong, Draft> _drafts = new();
+    private readonly Dictionary<ulong, DateTime> _lastOpen = new();
 
     public WeaponHudMenu(ILogger logger)
     {
@@ -128,6 +170,14 @@ public sealed class WeaponHudMenu
 
         var steamId = player.SteamID;
 
+        var now = DateTime.UtcNow;
+        if (_lastOpen.TryGetValue(steamId, out var last) && now - last < OpenDebounce)
+            return;
+
+        _lastOpen[steamId] = now;
+
+        var access = AccessFor(player);
+
         Task.Run(async () =>
         {
             UserSetting? settings = null;
@@ -143,7 +193,7 @@ public sealed class WeaponHudMenu
                 _logger.LogWarning(e, "[WeaponHud] could not load preferences for {SteamId}", steamId);
             }
 
-            var draft = BuildDraft(settings);
+            var draft = BuildDraft(settings, access);
 
             Server.NextFrame(() =>
             {
@@ -171,9 +221,24 @@ public sealed class WeaponHudMenu
         });
     }
 
+    private static Access AccessFor(CCSPlayerController player)
+    {
+        var config = Configs.GetConfigData();
+        var awp = config.GetAwpMode();
+        var ssg = config.GetSsgMode();
+
+        return new Access(
+            AwpShown:   awp != AccessMode.Disabled,
+            AwpUsable:  awp == AccessMode.Everyone || (awp == AccessMode.VipOnly && Helpers.HasAwpPermission(player)),
+            SsgShown:   ssg != AccessMode.Disabled,
+            SsgUsable:  ssg == AccessMode.Everyone || (ssg == AccessMode.VipOnly && Helpers.HasSsgPermission(player)),
+            Zeus:       config.IsZeusEnabled(),
+            EnemyStuff: Helpers.HasEnemyStuffPermission(player));
+    }
+
     /// <summary>Reads the config and the player's saved preferences into a draft. Pure - no engine
     /// calls - so it is safe to run off the game thread.</summary>
-    private Draft BuildDraft(UserSetting? settings)
+    private Draft BuildDraft(UserSetting? settings, Access access)
     {
         var draft = new Draft();
 
@@ -183,10 +248,32 @@ public sealed class WeaponHudMenu
 
             var options = WeaponHelpers
                 .GetPossibleWeaponsForAllocationType(type, team)
-                .Take(Cols)
                 .ToList();
 
+            if (type == WeaponAllocationType.Preferred)
+            {
+                // The server's AWP / SSG switches decide which snipers are offered at all. Random is
+                // "either queue", so it needs both.
+                options.RemoveAll(w => WeaponHelpers.IsAwpOrAutoSniperWeapon(w) ? !access.AwpShown
+                                     : WeaponHelpers.IsSsgPreference(w) && !access.SsgShown);
+
+                if (options.Count > 0 && access.AwpShown && access.SsgShown)
+                    options.Add(WeaponHelpers.RandomSniperPreference);
+            }
+
+            if (options.Count > Cols)
+                options.RemoveRange(Cols, options.Count - Cols);
+
             draft.Options.Add(options);
+
+            if (type == WeaponAllocationType.Preferred)
+            {
+                for (var c = 0; c < options.Count; c++)
+                {
+                    if (!CanUseSniper(options[c], access))
+                        draft.Locked.Add((g, c));
+                }
+            }
 
             if (settings?.GetWeaponPreference(team, type) is { } saved && options.Contains(saved))
             {
@@ -195,12 +282,54 @@ public sealed class WeaponHudMenu
             }
         }
 
+        if (access.Zeus)
+        {
+            var zeus = settings?.ZeusEnabled == true ? 1 : 0;
+            draft.Rows.Add(OptionKind.Zeus);
+            draft.OptionChosen[OptionKind.Zeus]   = zeus;
+            draft.OptionOriginal[OptionKind.Zeus] = zeus;
+        }
+
+        if (access.EnemyStuff)
+        {
+            var enemy = Math.Max(0, Array.IndexOf(EnemyValues, NormalizeEnemyStuff(settings?.EnemyStuffTeamPreference)));
+            draft.Rows.Add(OptionKind.EnemyStuff);
+            draft.OptionChosen[OptionKind.EnemyStuff]   = enemy;
+            draft.OptionOriginal[OptionKind.EnemyStuff] = enemy;
+        }
+
         return draft;
+    }
+
+    /// <summary>The VIP half of the old sniper menu's check: Random needs either queue.</summary>
+    private static bool CanUseSniper(CsItem weapon, Access access)
+    {
+        if (WeaponHelpers.IsRandomSniperPreference(weapon))
+            return access.AwpUsable || access.SsgUsable;
+
+        if (WeaponHelpers.IsAwpOrAutoSniperWeapon(weapon))
+            return access.AwpUsable;
+
+        return !WeaponHelpers.IsSsgPreference(weapon) || access.SsgUsable;
+    }
+
+    /// <summary>A stored flag combination as one of the four choices the row offers.</summary>
+    private static EnemyStuffTeamPreference NormalizeEnemyStuff(EnemyStuffTeamPreference? preference)
+    {
+        var value = preference ?? EnemyStuffTeamPreference.None;
+
+        return (value.HasFlag(EnemyStuffTeamPreference.Terrorist), value.HasFlag(EnemyStuffTeamPreference.CounterTerrorist)) switch
+        {
+            (true, true)  => EnemyStuffTeamPreference.Both,
+            (true, false) => EnemyStuffTeamPreference.Terrorist,
+            (false, true) => EnemyStuffTeamPreference.CounterTerrorist,
+            _             => EnemyStuffTeamPreference.None,
+        };
     }
 
     private void PruneDrafts()
     {
-        if (_drafts.Count == 0)
+        if (_drafts.Count == 0 && _lastOpen.Count == 0)
             return;
 
         var connected = Utilities.GetPlayers()
@@ -210,6 +339,9 @@ public sealed class WeaponHudMenu
 
         foreach (var gone in _drafts.Keys.Where(id => !connected.Contains(id)).ToList())
             _drafts.Remove(gone);
+
+        foreach (var gone in _lastOpen.Keys.Where(id => !connected.Contains(id)).ToList())
+            _lastOpen.Remove(gone);
     }
 
     private void Render(CCSPlayerController player, Draft draft)
@@ -247,11 +379,56 @@ public sealed class WeaponHudMenu
                 _menu.SetClassFor(player, tile, "hidden", false);
                 _menu.SetClassFor(player, tile, "selected",
                     draft.Chosen.TryGetValue(g, out var chosen) && chosen.Equals(weapon));
+                _menu.SetClassFor(player, tile, "disabled", draft.Locked.Contains((g, c)));
 
                 ApplyIcon(player, draft, tile, weapon);
             }
         }
+
+        RenderOptions(player, draft);
     }
+
+    /// <summary>The Zeus and enemy-weapons rows under the grid. The strip collapses when neither
+    /// applies - Zeus off on the server, enemy weapons off or VIP-only for a player without VIP.</summary>
+    private void RenderOptions(CCSPlayerController player, Draft draft)
+    {
+        _menu.SetClassFor(player, "wsel_opts", "hidden", draft.Rows.Count == 0);
+
+        for (var r = 0; r < OptionRows; r++)
+        {
+            var row = $"wsel_o{r}";
+
+            if (r >= draft.Rows.Count)
+            {
+                _menu.SetClassFor(player, row, "hidden", true);
+                continue;
+            }
+
+            var kind    = draft.Rows[r];
+            var choices = Choices(kind);
+
+            _menu.SetVariableFor(player, $"{row}_k", kind == OptionKind.Zeus ? "Zeus" : "Enemy weapons");
+
+            for (var b = 0; b < OptionButtons; b++)
+            {
+                var button = $"{row}_b{b}";
+
+                if (b >= choices.Length)
+                {
+                    _menu.SetClassFor(player, button, "hidden", true);
+                    continue;
+                }
+
+                _menu.SetVariableFor(player, button, choices[b]);
+                _menu.SetClassFor(player, button, "on", draft.OptionChosen[kind] == b);
+                _menu.SetClassFor(player, button, "hidden", false);
+            }
+
+            _menu.SetClassFor(player, row, "hidden", false);
+        }
+    }
+
+    private static string[] Choices(OptionKind kind) => kind == OptionKind.Zeus ? ZeusChoices : EnemyChoices;
 
     /// <summary>Swaps the tile's weapon picture. The server cannot set an image path, only toggle a
     /// class, so each weapon is a class - and the previous one has to come off first.</summary>
@@ -317,11 +494,37 @@ public sealed class WeaponHudMenu
             return;
         }
 
+        if (ParseOption(e.ElementId) is var (row, button))
+        {
+            if (row >= draft.Rows.Count || button >= Choices(draft.Rows[row]).Length)
+                return;
+
+            var kind     = draft.Rows[row];
+            var current = draft.OptionChosen[kind];
+
+            if (current == button)
+                return;
+
+            _menu.SetClassFor(e.Player, $"wsel_o{row}_b{current}", "on", false);
+            _menu.SetClassFor(e.Player, $"wsel_o{row}_b{button}", "on", true);
+            draft.OptionChosen[kind] = button;
+
+            return;
+        }
+
         if (ParseTile(e.ElementId) is not var (group, column))
             return;
 
         if (group >= draft.Options.Count || column >= draft.Options[group].Count)
             return;
+
+        // Drawn so players see what VIP gets, but not theirs to pick. The disabled class already
+        // makes the library drop the click; this is the check that does not depend on it.
+        if (draft.Locked.Contains((group, column)))
+        {
+            _menu.SetVariableFor(e.Player, "menu_footer", "That one is VIP only");
+            return;
+        }
 
         var weapon = draft.Options[group][column];
 
@@ -391,7 +594,14 @@ public sealed class WeaponHudMenu
                 pending.Add((g, original, true));
         }
 
-        if (pending.Count == 0)
+        var options = draft.Rows
+            .Where(kind => draft.OptionChosen[kind] != draft.OptionOriginal[kind])
+            .Select(kind => (Kind: kind, Choice: draft.OptionChosen[kind]))
+            .ToList();
+
+        var total = pending.Count + options.Count;
+
+        if (total == 0)
         {
             _menu.Close(player);
 
@@ -425,13 +635,26 @@ public sealed class WeaponHudMenu
                         // Hand over the CsItem, never its name. CsItem aliases members (402 is both
                         // M4A1 and M4A4), so ToString() does not round trip - M4A4 came back out of the
                         // name lookup as M4A1-S and that is what got saved.
-                        var (message, _) = await OnWeaponCommandHelper.HandleAsync(
-                            weapon,
-                            steamId,
-                            roundType: round,
-                            currentTeam: team,
-                            remove: remove,
-                            team: team);
+                        //
+                        // Except Random. It is a sentinel, not a weapon: HandleAsync refuses it as not
+                        // usable, and would clear nothing on a removal. It is written the way the old
+                        // sniper menu wrote it, straight to the shared sniper slot.
+                        var message = string.Empty;
+
+                        if (WeaponHelpers.IsRandomSniperPreference(weapon))
+                        {
+                            await Queries.SetAwpWeaponPreferenceAsync(steamId, remove ? null : weapon);
+                        }
+                        else
+                        {
+                            (message, _) = await OnWeaponCommandHelper.HandleAsync(
+                                weapon,
+                                steamId,
+                                roundType: round,
+                                currentTeam: team,
+                                remove: remove,
+                                team: team);
+                        }
 
                         if (!string.IsNullOrEmpty(message))
                         {
@@ -446,10 +669,26 @@ public sealed class WeaponHudMenu
                             Categories[group].Label, steamId);
                     }
                 }
+
+                foreach (var (kind, choice) in options)
+                {
+                    try
+                    {
+                        if (kind == OptionKind.Zeus)
+                            await Queries.SetZeusPreferenceAsync(steamId, choice == 1);
+                        else
+                            await Queries.SetEnemyStuffPreferenceAsync(steamId, EnemyValues[choice]);
+                    }
+                    catch (Exception ex)
+                    {
+                        failed++;
+                        _logger.LogError(ex, "[WeaponHud] saving {Option} failed for {SteamId}", kind, steamId);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                failed = pending.Count;
+                failed = total;
                 _logger.LogError(ex, "[WeaponHud] save loop failed for {SteamId}", steamId);
             }
             finally
@@ -475,6 +714,9 @@ public sealed class WeaponHudMenu
                             draft.Original[group] = weapon;
                     }
 
+                    foreach (var (kind, choice) in options)
+                        draft.OptionOriginal[kind] = choice;
+
                     // Resolved fresh from the slot rather than trusting the captured controller,
                     // which may have gone invalid while the writes were in flight. The old code
                     // bailed on that check BEFORE the close, leaving the panel on screen reading
@@ -487,8 +729,8 @@ public sealed class WeaponHudMenu
                     if (ours)
                     {
                         _menu.SetVariableFor(viewer!, "menu_footer", outcome == 0
-                            ? $"Saved {pending.Count} change(s)"
-                            : $"Saved {pending.Count - outcome} of {pending.Count} - {outcome} failed");
+                            ? $"Saved {total} change(s)"
+                            : $"Saved {total - outcome} of {total} - {outcome} failed");
                     }
 
                     // By slot, and not conditional on the controller being there. Skipped only when
@@ -499,6 +741,22 @@ public sealed class WeaponHudMenu
                 });
             }
         });
+    }
+
+    /// <summary>wsel_o{row}_b{button}.</summary>
+    private static (int Row, int Button)? ParseOption(string element)
+    {
+        if (!element.StartsWith("wsel_o", StringComparison.Ordinal))
+            return null;
+
+        var split = element.IndexOf("_b", 6, StringComparison.Ordinal);
+
+        if (split < 7
+            || !int.TryParse(element.AsSpan(6, split - 6), out var row)
+            || !int.TryParse(element.AsSpan(split + 2), out var button))
+            return null;
+
+        return (row, button);
     }
 
     private static (int Group, int Column)? ParseTile(string element)
@@ -558,6 +816,9 @@ public sealed class WeaponHudMenu
         [CsItem.Tec9] = "tec9",
         [CsItem.CZ] = "cz75a",
         [CsItem.Dualies] = "elite",
+
+        // Not a weapon: the "either sniper queue" pick, drawn with CS2's dice icon
+        [WeaponHelpers.RandomSniperPreference] = "random",
     };
 
     /// <summary>
@@ -590,6 +851,7 @@ public sealed class WeaponHudMenu
         [CsItem.Tec9]         = "TEC-9",
         [CsItem.XM1014]       = "XM1014",
         [CsItem.Mac10]        = "MAC-10",
+        [WeaponHelpers.RandomSniperPreference] = "RANDOM",
     };
 
     private static string DisplayName(CsItem weapon)

@@ -117,5 +117,6 @@ update is a CounterStrikeSharp update rather than a signature to re-derive.
 
 ## Turning it off
 
-`EnableHUDMenu: false` in the allocator config restores the SharpModMenu chat screen exactly as
-before. The HUD is a different front end to the same preferences, not a different feature.
+`EnableHUDMenu: false` in the allocator config turns the grid off. There is no other gun menu any
+more (the SharpModMenu screen is gone), so players are left with the chat commands: `!gun`,
+`!awp`, `!ssg`, `!zeus`, `!enemy`.

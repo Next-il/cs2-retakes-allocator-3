@@ -23,8 +23,13 @@
 		  grp{g}_label      {s:}     - category name
 		  w{g}_{c}          hidden   - unused tile collapses
 		  w{g}_{c}          selected - toggle state
-		  w{g}_{c}          icon-*   - weapon picture
+		  w{g}_{c}          disabled - drawn but locked (a VIP-only sniper)
+		  w{g}_{c}          icon-*   - weapon picture (icon-random: the Random sniper pick)
 		  w{g}_{c}          {s:}     - weapon name
+		  wsel_opts         hidden   - the option strip, when no row applies
+		  wsel_o{r}         hidden   - option row r: Zeus, enemy weapons (3 rows)
+		  wsel_o{r}_k       {s:}     - row label
+		  wsel_o{r}_b{k}    hidden, on - button k of row r (4 per row), {s:wsel_o{r}_b{k}} its text
 		  wsel_save / wsel_close       - footer
 	-->
 	<Panel class="hud-screen" hittest="false">
@@ -621,6 +626,37 @@
 						</Panel>
 				</Panel>
 			</Panel>
+			</Panel>
+
+			<!-- What the tiles cannot say, under both columns: Zeus and enemy weapons. -->
+			<Panel id="wsel_opts" class="wsel-opts hidden">
+				<Panel id="wsel_o0" class="wsel-opt-row hidden">
+					<Label class="wsel-opt-k" text="{s:wsel_o0_k}" />
+					<Panel class="wsel-opt-btns">
+						<Button id="wsel_o0_b0" class="wsel-opt hidden"><Label class="wsel-opt-lbl" text="{s:wsel_o0_b0}" /></Button>
+						<Button id="wsel_o0_b1" class="wsel-opt hidden"><Label class="wsel-opt-lbl" text="{s:wsel_o0_b1}" /></Button>
+						<Button id="wsel_o0_b2" class="wsel-opt hidden"><Label class="wsel-opt-lbl" text="{s:wsel_o0_b2}" /></Button>
+						<Button id="wsel_o0_b3" class="wsel-opt hidden"><Label class="wsel-opt-lbl" text="{s:wsel_o0_b3}" /></Button>
+					</Panel>
+				</Panel>
+				<Panel id="wsel_o1" class="wsel-opt-row hidden">
+					<Label class="wsel-opt-k" text="{s:wsel_o1_k}" />
+					<Panel class="wsel-opt-btns">
+						<Button id="wsel_o1_b0" class="wsel-opt hidden"><Label class="wsel-opt-lbl" text="{s:wsel_o1_b0}" /></Button>
+						<Button id="wsel_o1_b1" class="wsel-opt hidden"><Label class="wsel-opt-lbl" text="{s:wsel_o1_b1}" /></Button>
+						<Button id="wsel_o1_b2" class="wsel-opt hidden"><Label class="wsel-opt-lbl" text="{s:wsel_o1_b2}" /></Button>
+						<Button id="wsel_o1_b3" class="wsel-opt hidden"><Label class="wsel-opt-lbl" text="{s:wsel_o1_b3}" /></Button>
+					</Panel>
+				</Panel>
+				<Panel id="wsel_o2" class="wsel-opt-row hidden">
+					<Label class="wsel-opt-k" text="{s:wsel_o2_k}" />
+					<Panel class="wsel-opt-btns">
+						<Button id="wsel_o2_b0" class="wsel-opt hidden"><Label class="wsel-opt-lbl" text="{s:wsel_o2_b0}" /></Button>
+						<Button id="wsel_o2_b1" class="wsel-opt hidden"><Label class="wsel-opt-lbl" text="{s:wsel_o2_b1}" /></Button>
+						<Button id="wsel_o2_b2" class="wsel-opt hidden"><Label class="wsel-opt-lbl" text="{s:wsel_o2_b2}" /></Button>
+						<Button id="wsel_o2_b3" class="wsel-opt hidden"><Label class="wsel-opt-lbl" text="{s:wsel_o2_b3}" /></Button>
+					</Panel>
+				</Panel>
 			</Panel>
 
 			<Panel class="hud-foot">

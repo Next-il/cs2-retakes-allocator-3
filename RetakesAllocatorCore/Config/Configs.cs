@@ -460,12 +460,12 @@ public record ConfigData
     public string? ChatMessagePluginPrefix { get; set; }
 
     /// <summary>
-    /// Route the gun-menu commands at the Panorama HUD grid instead of the chat menu.
+    /// The Panorama weapon grid: the gun menu behind <c>!guns</c>, the buy menu key and
+    /// <see cref="InGameGunMenuCenterCommands"/>.
     ///
-    /// <para>Turning it off restores the SharpModMenu screen exactly as before - the HUD is an
-    /// alternative front end to the same preferences, not a different feature. Worth having as a
-    /// switch because the grid depends on a client-side layout that a CS2 update can break, and the
-    /// chat menu never does.</para>
+    /// <para>Turning it off leaves no menu at all, only the chat commands (<c>!gun</c>, <c>!awp</c>,
+    /// <c>!ssg</c>, <c>!zeus</c>, <c>!enemy</c>). The SharpModMenu screen it used to fall back to is
+    /// gone.</para>
     /// </summary>
     public bool EnableHUDMenu { get; set; } = true;
 

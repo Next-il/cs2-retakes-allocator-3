@@ -3,7 +3,7 @@
 Allocator plugin that runs alongside B3none's [cs2-retakes](https://github.com/b3none/cs2-retakes). It picks round types, gives players the right loadouts, and handles sniper queues, enemy-weapon swaps, and Zeus preferences.
 
 ## What's new in 2.6
-- SharpModMenu loadout menu (`guns`, `!guns`, `/guns`) for primaries, pistols, sniper choice, enemy weapons, and Zeus.
+- HUD loadout menu (`guns`, `!guns`, `/guns`, the buy menu key) for primaries, pistols, sniper choice, enemy weapons, and Zeus. The layout is in `hud/` and ships in the workshop addon.
 - Sniper system reworked: separate AWP and SSG queues with per-queue access mode (disabled/everyone/VIP), per-team caps and minimum player gates, random sniper option, auto-snipers counted in the AWP queue.
 - Enemy-weapon and Zeus preferences now have permissions, per-team limits, and menu controls.
 - Config file is category-based (legacy keys auto-converted). Shotguns/SMGs can be added to full-buy pools; gun commands can be toggled.
@@ -12,7 +12,7 @@ Allocator plugin that runs alongside B3none's [cs2-retakes](https://github.com/b
 ## Requirements
 - CounterStrikeSharp server.
 - B3none's cs2-retakes with `EnableFallbackAllocation` disabled.
-- Release zip from this repo (includes sqlite runtimes, SharpModMenu, and CSSUniversalMenuAPI).
+- Release zip from this repo (includes sqlite runtimes and PanoramaManager), and the `hud/panorama` layout in the workshop addon.
 
 ## Installation
 1. Stop the server.
@@ -36,7 +36,7 @@ Round order can be `Random` (weighted), `RandomFixedCounts`, or `ManualOrdering`
 `EnableAllWeaponsForEveryone` lets teams use each other's primaries. `EnableWeaponShotguns` and `EnableWeaponPms` expand full-buy pools with shotguns and SMGs. Preferences never swap weapons mid-round.
 
 ### Player controls
-- **Loadout menu (SharpModMenu)**: type `guns`, `!guns`, `/guns`, or `!gun` (configured by `Config.InGameGunMenuCenterCommands`) to open the menu. It sets primary, secondary, pistol, sniper preference (AWP / SSG / Random / Disabled), enemy-weapon preference (Off / T / CT / Both), and Zeus toggle. Changes apply on the next round.
+- **Loadout menu (HUD)**: type `guns`, `!guns`, `/guns` (configured by `Config.InGameGunMenuCenterCommands`) or press the buy menu key to open the weapon grid. It sets primary, mid-range, pistol-round and secondary weapons for both teams, the sniper preference (AWP / SSG / Random, or none; VIP-only snipers show locked), enemy weapons (Off / T / CT / Both) and Zeus. Save writes the changes; they apply on the next round. `EnableHUDMenu: false` turns the menu off and leaves the chat commands.
 - **Quick commands** (disable with `GunCommandsEnabled`):
   - `!gun <weapon> [T|CT]` / `!removegun <weapon> [T|CT]`
   - `!awp`, `!ssg`, `!zeus`

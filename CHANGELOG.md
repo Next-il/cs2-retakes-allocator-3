@@ -2,7 +2,11 @@
 
 ## Unreleased
 
+### Removed
+- Removed the SharpModMenu / CSSUniversalMenuAPI loadout menu. The HUD weapon grid is the only gun menu now, and the CSSUniversalMenuAPI package reference is gone.
+
 ### Added
+- The HUD weapon grid has what only the SharpModMenu menu had: a Random sniper tile, VIP-only snipers drawn locked, and Zeus and enemy-weapons rows under the grid.
 - Added SharpModMenu/CSSUniversalMenuAPI support for the in-game loadout menu.
 - Added `EnableBuyMenu` config option to allow or block `buy`, `autobuy`, `rebuy`, and ammo buy commands.
 - Added `css_enemy` command to toggle enemy weapon preferences with `disable`, `t`, `ct`, or `both`.
