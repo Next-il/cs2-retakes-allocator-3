@@ -145,13 +145,31 @@ public class Queries
 
         List<UserSetting> userSettingsList;
 
+        // A failed read must never stop the round's allocation: the exception used to propagate
+        // out of round_poststart and nobody got weapons. Without the preferences everyone gets the
+        // loadout a player with no saved settings gets.
         try
         {
-            userSettingsList = Db.GetInstance()
-                .UserSettings
-                .AsNoTracking()
-                .Where(u => userIds.Contains(u.UserId))
-                .ToList();
+            userSettingsList = ReadUsersSettings(userIds);
+        }
+        catch (Exception first) when (IsClosedConnection(first))
+        {
+            // A pooled connection the server or portgate already closed fails at once, and the pool
+            // throws it away, so one more read gets a live connection. Not retried for anything
+            // else: a timeout would hold the game thread a second time.
+            Log.Warn($"Reading weapon preferences hit a closed connection ({first.GetBaseException().Message}); retrying once.");
+            try
+            {
+                userSettingsList = ReadUsersSettings(userIds);
+            }
+            catch (Exception second)
+            {
+                return NoUsersSettings(second);
+            }
+        }
+        catch (Exception e)
+        {
+            return NoUsersSettings(e);
         }
         finally
         {
@@ -165,6 +183,36 @@ public class Queries
         return userSettingsList
             .GroupBy(p => p.UserId)
             .ToDictionary(g => g.Key, g => g.First());
+    }
+
+    private static List<UserSetting> ReadUsersSettings(ICollection<ulong> userIds) =>
+        Db.GetInstance()
+            .UserSettings
+            .AsNoTracking()
+            .Where(u => userIds.Contains(u.UserId))
+            .ToList();
+
+    private static IDictionary<ulong, UserSetting> NoUsersSettings(Exception e)
+    {
+        Log.Error($"Could not read weapon preferences ({e.GetBaseException().Message}); allocating without them this time.");
+        return new Dictionary<ulong, UserSetting>();
+    }
+
+    /// <summary>
+    /// The connection was already closed when the read used it: MySqlConnector reports "An incomplete
+    /// response was received from the server" as a MySqlEndOfStreamException, an IOException.
+    /// </summary>
+    private static bool IsClosedConnection(Exception e)
+    {
+        for (Exception? current = e; current is not null; current = current.InnerException)
+        {
+            if (current is IOException)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private const int MySqlTableNotFoundError = 1146;
